@@ -1,11 +1,11 @@
 CXX=g++
 CXXFLAGS=-std=c++11 -Wall -pedantic
 LIBS=
+NAME1=task1
 
 task1: compile1
-	out/task1.out
-task1_name = src/task1.cpp
-compile1: $(task1_name)
-	$(CXX) $(CXXFLAGS) $(task1_name) -o out/task1.out
+	out/$(NAME1).out
+compile1: src/$(NAME1).cpp
+	$(CXX) $(CXXFLAGS) src/$(NAME1).cpp -o out/$(NAME1).out
 clean:
 	rm -rf out/*
