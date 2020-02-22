@@ -1,5 +1,5 @@
 CXX=g++
-CXXFLAGS=-std=c++11 -Wall -pedantic
+CXXFLAGS=-std=c++11 -Wall -pedantic -g
 LIBS=
 NAME1=task1
 
