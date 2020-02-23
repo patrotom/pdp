@@ -2,8 +2,8 @@
 #include <string>
 #include <sstream>
 #include <vector>
-#include <map>
 #include <iterator>
+#include <cmath>
 
 using namespace std;
 
@@ -30,10 +30,41 @@ public:
     void insertExclusionPair(size_t u, size_t v) {
         m_exclusionPairs.emplace_back(make_pair(u, v));
     }
+
+    void solveProblem() {
+        vector<vector<bool>> instances = generateInstances();
+
+    }
 private:
     size_t m_n, m_k, m_b;
     vector<vector<pair<size_t, double>>> m_graph;
     vector<pair<size_t, size_t>> m_exclusionPairs;
+
+    vector<vector<bool>> generateInstances() {
+        size_t size = pow(2, m_n) - 1;
+        vector<vector<bool>> instances;
+
+        for (size_t i = 0; i < size; i++) {
+            vector<bool> instance(m_n, 0);
+            for (size_t j = 0; j < m_n; j++) {
+                if ((i >> j) & 0x1)
+                    instance[j] = 1;
+                else
+                    instance[j] = 0;
+            }
+
+            for (auto it : m_exclusionPairs) {
+                if (instance[it.first] == 1)
+                    instance[it.second] = 0;
+                else
+                    instance[it.second] = 1;
+            }
+
+            instances.push_back(instance);
+        }
+
+        return instances;
+    }
 };
 
 template<typename T>
@@ -66,6 +97,7 @@ Graph constructGraph() {
 
 int main(int argc, char **argv) {
     Graph g = constructGraph();
+    g.solveProblem();
 
     return 0;
 }
