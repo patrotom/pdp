@@ -14,6 +14,8 @@ public:
             vector<pair<size_t, double>> v;
             m_graph.push_back(v);
         }
+        m_lowerBound = 0;
+        m_bestPrice = n * k / 2;
     }
 
     size_t getN() { return m_n; }
@@ -29,6 +31,10 @@ public:
 
     void insertExclusionPair(size_t u, size_t v) {
         m_exclusionPairs.emplace_back(make_pair(u, v));
+        for (auto it: m_graph[u]) {
+            if (it.first == v)
+                m_lowerBound += it.second;
+        }
     }
 
     void solveProblem() {
@@ -37,6 +43,8 @@ public:
     }
 private:
     size_t m_n, m_k, m_b;
+    double m_lowerBound, m_bestPrice;
+    vector<bool> m_bestSolution;
     vector<vector<pair<size_t, double>>> m_graph;
     vector<pair<size_t, size_t>> m_exclusionPairs;
 
