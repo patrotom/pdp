@@ -2,76 +2,96 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <map>
 #include <iterator>
 #include <cmath>
 
 using namespace std;
 
+// class Node {
+// public:
+//     Node(int value, bool set) {
+//         m_value = value;
+//         m_set = set;
+//     }
+
+//     int getValue() { return m_value; }
+
+//     bool getSet() { return m_set; }
+// private:
+//     int m_value;
+//     bool m_set;
+// };
+
 class Graph {
 public:
-    Graph(size_t n, size_t k, size_t b): m_n(n), m_k(k), m_b(b) {
-        for (size_t i = 0; i < n; i++) {
-            vector<pair<size_t, double>> v;
+    Graph(int n, int k, int b): m_n(n), m_k(k), m_b(b) {
+        for (int i = 0; i < n; i++) {
+            vector<pair<int, double>> v;
             m_graph.push_back(v);
         }
         m_lowerBound = 0;
         m_bestPrice = n * k / 2;
     }
 
-    size_t getN() { return m_n; }
+    int getN() { return m_n; }
 
-    size_t getK() { return m_k; }
+    int getK() { return m_k; }
 
-    size_t getB() { return m_b; }
+    int getB() { return m_b; }
 
-    void insertNode(size_t u, size_t v, double w) {
+    void insertNode(int u, int v, double w) {
         m_graph[u].push_back(make_pair(v, w));
-        m_graph[v].push_back(make_pair(u, w));
     }
 
-    void insertExclusionPair(size_t u, size_t v) {
-        m_exclusionPairs.emplace_back(make_pair(u, v));
-        for (auto it: m_graph[u]) {
-            if (it.first == v)
-                m_lowerBound += it.second;
-        }
+    void insertExclusionPair(int u, int v) {
+        m_exclusionPairs[u] = v;
     }
 
     void solveProblem() {
-        vector<vector<bool>> instances = generateInstances();
+        vector<int> sol(m_n, -1);
+        sol[0] = 0;
+        bbDFS(0, -1, 0.0, 0, sol);
+        
 
     }
 private:
-    size_t m_n, m_k, m_b;
+    int m_n, m_k, m_b;
     double m_lowerBound, m_bestPrice;
-    vector<bool> m_bestSolution;
-    vector<vector<pair<size_t, double>>> m_graph;
-    vector<pair<size_t, size_t>> m_exclusionPairs;
+    vector<int> m_bestSolution;
+    vector<vector<pair<int, double>>> m_graph;
+    map<int, int> m_exclusionPairs;
 
-    vector<vector<bool>> generateInstances() {
-        size_t size = pow(2, m_n) - 1;
-        vector<vector<bool>> instances;
-
-        for (size_t i = 0; i < size; i++) {
-            vector<bool> instance(m_n, 0);
-            for (size_t j = 0; j < m_n; j++) {
-                if ((i >> j) & 0x1)
-                    instance[j] = 1;
-                else
-                    instance[j] = 0;
+    void bbDFS(int u, int p, double price, int cnt, vector<int> &sol) {
+        if (cnt == m_n) {
+            if (price < m_bestPrice) {
+                m_bestSolution = sol;
+                m_bestPrice = price;
             }
-
-            for (auto it : m_exclusionPairs) {
-                if (instance[it.first] == 1)
-                    instance[it.second] = 0;
-                else
-                    instance[it.second] = 1;
-            }
-
-            instances.push_back(instance);
         }
+        else {
+            if (m_exclusionPairs.find(u) != m_exclusionPairs.end())
+                sol[m_exclusionPairs[u]] = !sol[u];
+            for (auto it: m_graph[u]) {
+                if (it.first != p) {
+                    if (sol[it.first] != -1) {
+                        price = sol[it.first] == sol[u] ? price : price += it.second;
+                        bbDFS(it.first, u, price, ++cnt, sol);
+                    }
+                    else {
+                        sol[it.first] = 0;
+                        price = sol[it.first] == sol[u] ? price : price += it.second;
+                        if (price < m_bestPrice)
+                            bbDFS(it.first, u, price, ++cnt, sol);
 
-        return instances;
+                        sol[it.first] = 1;
+                        price = sol[it.first] == sol[u] ? price : price += it.second;
+                        if (price < m_bestPrice)
+                            bbDFS(it.first, u, price, ++cnt, sol);
+                    }
+                }
+            }
+        }
     }
 };
 
@@ -84,19 +104,19 @@ vector<T> split(const string& line) {
 Graph constructGraph() {
     string rawInput;
     getline(cin, rawInput);
-    vector<size_t> inits = split<size_t>(rawInput);
+    vector<int> inits = split<int>(rawInput);
     Graph g(inits[0], inits[1], inits[2]);
 
-    size_t edgesNum = g.getN() * g.getK() / 2;
-    for (size_t i = 0; i < edgesNum; i++) {
+    int edgesNum = g.getN() * g.getK() / 2;
+    for (int i = 0; i < edgesNum; i++) {
         getline(cin, rawInput);
         vector<double> nums = split<double>(rawInput);
-        g.insertNode(size_t(nums[0]), size_t(nums[1]), nums[2]);
+        g.insertNode(int(nums[0]), int(nums[1]), nums[2]);
     }
 
-    for (size_t i = 0; i < g.getB(); i++) {
+    for (int i = 0; i < g.getB(); i++) {
         getline(cin, rawInput);
-        vector<size_t> nums = split<size_t>(rawInput);
+        vector<int> nums = split<int>(rawInput);
         g.insertExclusionPair(nums[0], nums[1]);
     }
 
