@@ -8,21 +8,6 @@
 
 using namespace std;
 
-// class Node {
-// public:
-//     Node(int value, bool set) {
-//         m_value = value;
-//         m_set = set;
-//     }
-
-//     int getValue() { return m_value; }
-
-//     bool getSet() { return m_set; }
-// private:
-//     int m_value;
-//     bool m_set;
-// };
-
 class Graph {
 public:
     Graph(int n, int k, int b): m_n(n), m_k(k), m_b(b) {
@@ -30,7 +15,6 @@ public:
             vector<pair<int, double>> v;
             m_graph.push_back(v);
         }
-        m_lowerBound = 0;
         m_bestPrice = n * k / 2;
     }
 
@@ -42,56 +26,60 @@ public:
 
     void insertNode(int u, int v, double w) {
         m_graph[u].push_back(make_pair(v, w));
+        m_graph[v].push_back(make_pair(u, w));
     }
 
     void insertExclusionPair(int u, int v) {
-        m_exclusionPairs[u] = v;
+        m_exclusionPairs[v] = u;
     }
 
     void solveProblem() {
         vector<int> sol(m_n, -1);
-        sol[0] = 0;
-        bbDFS(0, -1, 0.0, 0, sol);
-        
-
+        sol.at(0) = 0;
+        bbDFS(0, 0.0, sol);
     }
 private:
     int m_n, m_k, m_b;
-    double m_lowerBound, m_bestPrice;
+    double m_bestPrice;
     vector<int> m_bestSolution;
     vector<vector<pair<int, double>>> m_graph;
     map<int, int> m_exclusionPairs;
 
-    void bbDFS(int u, int p, double price, int cnt, vector<int> &sol) {
-        if (cnt == m_n) {
+    void bbDFS(int u, double price, vector<int> sol) {
+        int next = u + 1;
+
+        if (next == m_n) {
             if (price < m_bestPrice) {
-                m_bestSolution = sol;
                 m_bestPrice = price;
+                m_bestSolution = sol;
             }
+            return;
+        }
+
+        if (m_exclusionPairs.find(next) != m_exclusionPairs.end()) {
+            sol.at(next) = !sol.at(m_exclusionPairs[next]);
+            double newPrice = recalculatePrice(next, price, sol);
+            if (newPrice < m_bestPrice)
+                bbDFS(next, newPrice, sol);
         }
         else {
-            if (m_exclusionPairs.find(u) != m_exclusionPairs.end())
-                sol[m_exclusionPairs[u]] = !sol[u];
-            for (auto it: m_graph[u]) {
-                if (it.first != p) {
-                    if (sol[it.first] != -1) {
-                        price = sol[it.first] == sol[u] ? price : price += it.second;
-                        bbDFS(it.first, u, price, ++cnt, sol);
-                    }
-                    else {
-                        sol[it.first] = 0;
-                        price = sol[it.first] == sol[u] ? price : price += it.second;
-                        if (price < m_bestPrice)
-                            bbDFS(it.first, u, price, ++cnt, sol);
-
-                        sol[it.first] = 1;
-                        price = sol[it.first] == sol[u] ? price : price += it.second;
-                        if (price < m_bestPrice)
-                            bbDFS(it.first, u, price, ++cnt, sol);
-                    }
-                }
-            }
+            sol.at(next) = 0;
+            double newPrice = recalculatePrice(next, price, sol);
+            if (newPrice < m_bestPrice)
+                bbDFS(next, newPrice, sol);
+            
+            sol.at(next) = 1;
+            newPrice = recalculatePrice(next, price, sol);
+            if (newPrice < m_bestPrice)
+                bbDFS(next, newPrice, sol);
         }
+    }
+
+    double recalculatePrice(int u, double price, const vector<int> &sol) {
+        for (auto n: m_graph[u])
+            if (sol.at(n.first) != -1 && sol.at(n.first) != sol.at(u))
+                price += n.second;
+        return price;
     }
 };
 
