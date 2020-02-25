@@ -4,7 +4,7 @@
         {
             "label": "compile",
             "type": "shell",
-            "command": "make compile1"
+            "command": "make debug1"
         }
     ]
 }

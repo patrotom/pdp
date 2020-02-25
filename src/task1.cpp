@@ -8,6 +8,25 @@
 
 using namespace std;
 
+class Solution {
+public:
+    Solution(double price, vector<pair<int, int>> edges, vector<int> vec) {
+        m_price = price;
+        m_edges = edges;
+        m_vec = vec;
+    }
+
+    double getPrice() { return m_price; }
+
+    vector<pair<int, int>> getEdges() { return m_edges; }
+
+    vector<int> getVec() { return m_vec; }
+private:
+    double m_price;
+    vector<pair<int, int>> m_edges;
+    vector<int> m_vec;
+};
+
 class Graph {
 public:
     Graph(int n, int k, int b): m_n(n), m_k(k), m_b(b) {
@@ -33,54 +52,60 @@ public:
         m_exclusionPairs[v] = u;
     }
 
-    void solveProblem() {
-        vector<int> sol(m_n, -1);
-        sol.at(0) = 0;
-        bbDFS(0, 0.0, sol);
+    Solution solveProblem() {
+        vector<int> vec(m_n, -1);
+        vec.at(0) = 0;
+        bbDFS(0, 0.0, vec, vector<pair<int, int>>());
 
-        cout << m_bestPrice << endl;
+        return Solution(m_bestPrice, m_bestEdges, m_bestVec);
     }
 private:
     int m_n, m_k, m_b;
     double m_bestPrice;
-    vector<int> m_bestSolution;
+    vector<int> m_bestVec;
+    vector<pair<int, int>> m_bestEdges;
     vector<vector<pair<int, double>>> m_graph;
     map<int, int> m_exclusionPairs;
 
-    void bbDFS(int u, double price, vector<int> sol) {
+    void bbDFS(int u, double price, vector<int> vec, vector<pair<int, int>> edges) {
         int next = u + 1;
 
         if (next == m_n) {
             if (price < m_bestPrice) {
                 m_bestPrice = price;
-                m_bestSolution = sol;
+                m_bestVec = vec;
+                m_bestEdges = edges;
             }
             return;
         }
 
         if (m_exclusionPairs.find(next) != m_exclusionPairs.end()) {
-            sol.at(next) = !sol.at(m_exclusionPairs.at(next));
-            double newPrice = recalculatePrice(next, price, sol);
+            vec.at(next) = !vec.at(m_exclusionPairs.at(next));
+            double newPrice = recalculatePrice(next, price, vec, edges);
             if (newPrice < m_bestPrice)
-                bbDFS(next, newPrice, sol);
+                bbDFS(next, newPrice, vec, edges);
         }
         else {
-            sol.at(next) = 0;
-            double newPrice = recalculatePrice(next, price, sol);
+            vec.at(next) = 0;
+            vector<pair<int, int>> newEdges = edges;
+            double newPrice = recalculatePrice(next, price, vec, newEdges);
             if (newPrice < m_bestPrice)
-                bbDFS(next, newPrice, sol);
+                bbDFS(next, newPrice, vec, newEdges);
             
-            sol.at(next) = 1;
-            newPrice = recalculatePrice(next, price, sol);
+            vec.at(next) = 1;
+            price = recalculatePrice(next, price, vec, edges);
             if (newPrice < m_bestPrice)
-                bbDFS(next, newPrice, sol);
+                bbDFS(next, price, vec, edges);
         }
     }
 
-    double recalculatePrice(int u, double price, const vector<int> &sol) {
+    double recalculatePrice(int u, double price, const vector<int> &vec,
+                            vector<pair<int, int>> &edges) {
         for (auto n: m_graph.at(u))
-            if (sol.at(n.first) != -1 && sol.at(n.first) != sol.at(u))
+            if (vec.at(n.first) != -1 && vec.at(n.first) != vec.at(u)) {
                 price += n.second;
+                edges.push_back(make_pair(n.first, u));
+            }
         return price;
     }
 };
@@ -113,9 +138,33 @@ Graph constructGraph() {
     return g;
 }
 
+void printSolution(Solution& s) {
+    cout << "Best price: " << s.getPrice() << endl;
+
+    cout << "-------------------------" << endl;
+
+    cout << "Set X: ";
+    for (size_t i = 0; i < s.getVec().size(); i++)
+        if (s.getVec().at(i) == 0)
+            cout << i << " ";
+    cout << endl;
+
+    cout << "Set Y: ";
+    for (size_t i = 0; i < s.getVec().size(); i++)
+        if (s.getVec().at(i) == 1)
+            cout << i << " ";
+    cout << endl;
+
+    cout << "-------------------------" << endl;
+
+    cout << "Edges included in cut:" << endl;
+    for (auto it: s.getEdges())
+        cout << "(" << it.first << ", " << it.second << ")" << endl;
+}
+
 int main(int argc, char **argv) {
     Graph g = constructGraph();
-    g.solveProblem();
-
+    Solution s = g.solveProblem();
+    printSolution(s);
     return 0;
 }
