@@ -25,8 +25,8 @@ public:
     int getB() { return m_b; }
 
     void insertNode(int u, int v, double w) {
-        m_graph[u].push_back(make_pair(v, w));
-        m_graph[v].push_back(make_pair(u, w));
+        m_graph.at(u).push_back(make_pair(v, w));
+        m_graph.at(v).push_back(make_pair(u, w));
     }
 
     void insertExclusionPair(int u, int v) {
@@ -37,6 +37,8 @@ public:
         vector<int> sol(m_n, -1);
         sol.at(0) = 0;
         bbDFS(0, 0.0, sol);
+
+        cout << m_bestPrice << endl;
     }
 private:
     int m_n, m_k, m_b;
@@ -57,7 +59,7 @@ private:
         }
 
         if (m_exclusionPairs.find(next) != m_exclusionPairs.end()) {
-            sol.at(next) = !sol.at(m_exclusionPairs[next]);
+            sol.at(next) = !sol.at(m_exclusionPairs.at(next));
             double newPrice = recalculatePrice(next, price, sol);
             if (newPrice < m_bestPrice)
                 bbDFS(next, newPrice, sol);
@@ -76,7 +78,7 @@ private:
     }
 
     double recalculatePrice(int u, double price, const vector<int> &sol) {
-        for (auto n: m_graph[u])
+        for (auto n: m_graph.at(u))
             if (sol.at(n.first) != -1 && sol.at(n.first) != sol.at(u))
                 price += n.second;
         return price;
@@ -93,19 +95,19 @@ Graph constructGraph() {
     string rawInput;
     getline(cin, rawInput);
     vector<int> inits = split<int>(rawInput);
-    Graph g(inits[0], inits[1], inits[2]);
+    Graph g(inits.at(0), inits.at(1), inits.at(2));
 
     int edgesNum = g.getN() * g.getK() / 2;
     for (int i = 0; i < edgesNum; i++) {
         getline(cin, rawInput);
         vector<double> nums = split<double>(rawInput);
-        g.insertNode(int(nums[0]), int(nums[1]), nums[2]);
+        g.insertNode(int(nums.at(0)), int(nums.at(1)), nums.at(2));
     }
 
     for (int i = 0; i < g.getB(); i++) {
         getline(cin, rawInput);
         vector<int> nums = split<int>(rawInput);
-        g.insertExclusionPair(nums[0], nums[1]);
+        g.insertExclusionPair(nums.at(0), nums.at(1));
     }
 
     return g;
