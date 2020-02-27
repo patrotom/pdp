@@ -18,10 +18,10 @@ public:
     /**
      * Default constructor.
      */
-    Solution(double price, vector<pair<int, int>> edges, vector<int> vec) {
+    Solution(double price, vector<int> vec, size_t recCnt) {
         m_price = price;
-        m_edges = edges;
         m_vec = vec;
+        m_recCnt = recCnt;
     }
 
     /**
@@ -30,17 +30,12 @@ public:
     double getPrice() { return m_price; }
 
     /**
-     * Returns edges included in the graph cut.
-     */
-    vector<pair<int, int>> getEdges() { return m_edges; }
-
-    /**
      * Returns vector with nodes separated into two disjoint sets.
      */
     vector<int> getVec() { return m_vec; }
 private:
     double m_price;
-    vector<pair<int, int>> m_edges;
+    size_t m_recCnt;
     vector<int> m_vec;
 };
 
@@ -97,57 +92,54 @@ public:
     Solution solveProblem() {
         vector<int> vec(m_n, -1);
         vec.at(0) = 0;
-        bbDFS(0, 0.0, vec, vector<pair<int, int>>());
+        m_recCnt = 0;
+        bbDFS(0, 0.0, vec);
 
-        return Solution(m_bestPrice, m_bestEdges, m_bestVec);
+        return Solution(m_bestPrice, m_bestVec, m_recCnt);
     }
 private:
     int m_n, m_k, m_b;
+    size_t m_recCnt;
     double m_bestPrice;
     vector<int> m_bestVec;
-    vector<pair<int, int>> m_bestEdges;
     vector<vector<pair<int, double>>> m_graph;
     map<int, int> m_exclusionPairs;
 
-    void bbDFS(int u, double price, vector<int> vec, vector<pair<int, int>> edges) {
+    void bbDFS(int u, double price, vector<int> vec) {
+        m_recCnt++;
         int next = u + 1;
 
         if (next == m_n) {
             if (price < m_bestPrice) {
                 m_bestPrice = price;
                 m_bestVec = vec;
-                m_bestEdges = edges;
             }
             return;
         }
 
         if (m_exclusionPairs.find(next) != m_exclusionPairs.end()) {
             vec.at(next) = !vec.at(m_exclusionPairs.at(next));
-            double newPrice = recalculatePrice(next, price, vec, edges);
+            double newPrice = recalculatePrice(next, price, vec);
             if (newPrice < m_bestPrice)
-                bbDFS(next, newPrice, vec, edges);
+                bbDFS(next, newPrice, vec);
         }
         else {
             vec.at(next) = 0;
-            vector<pair<int, int>> newEdges = edges;
-            double newPrice = recalculatePrice(next, price, vec, newEdges);
+            double newPrice = recalculatePrice(next, price, vec);
             if (newPrice < m_bestPrice)
-                bbDFS(next, newPrice, vec, newEdges);
+                bbDFS(next, newPrice, vec);
             
             vec.at(next) = 1;
-            price = recalculatePrice(next, price, vec, edges);
+            price = recalculatePrice(next, price, vec);
             if (newPrice < m_bestPrice)
-                bbDFS(next, price, vec, edges);
+                bbDFS(next, price, vec);
         }
     }
 
-    double recalculatePrice(int u, double price, const vector<int> &vec,
-                            vector<pair<int, int>> &edges) {
+    double recalculatePrice(int u, double price, const vector<int> &vec) {
         for (auto n: m_graph.at(u))
-            if (vec.at(n.first) != -1 && vec.at(n.first) != vec.at(u)) {
+            if (vec.at(n.first) != -1 && vec.at(n.first) != vec.at(u))
                 price += n.second;
-                edges.push_back(make_pair(n.first, u));
-            }
         return price;
     }
 };
@@ -211,8 +203,8 @@ void printSolution(Solution& s) {
     cout << "-------------------------" << endl;
 
     cout << "Edges included in cut:" << endl;
-    for (auto it: s.getEdges())
-        cout << "(" << it.first << ", " << it.second << ")" << endl;
+    // for (auto it: s.getEdges())
+    //     cout << "(" << it.first << ", " << it.second << ")" << endl;
 }
 
 int main(int argc, char **argv) {
