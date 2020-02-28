@@ -154,9 +154,9 @@ private:
                 bbDFS(next, newPrice, vec);
             
             vec.at(next) = 1;
-            price = recalculatePrice(next, price, vec);
+            newPrice = recalculatePrice(next, price, vec);
             if (newPrice < m_bestPrice)
-                bbDFS(next, price, vec);
+                bbDFS(next, newPrice, vec);
         }
     }
 
