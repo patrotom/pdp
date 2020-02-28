@@ -5,23 +5,26 @@
 #include <map>
 #include <iterator>
 #include <cmath>
+#include <chrono>
 
 using namespace std;
+using namespace chrono;
 
 /**
  * Servers as a placeholder for a solution variables. Solution consists of best
- * price, edges included in the cut and the vector with nodes that are separated
- * into two disjoint sets.
+ * price, number of recursive calls, execution time of B&B DFS algorithm, and
+ * the vector with nodes that are separated into two disjoint sets.
  */
 class Solution {
 public:
     /**
      * Default constructor.
      */
-    Solution(double price, vector<int> vec, size_t recCnt) {
+    Solution(double price, vector<int> vec, size_t recCnt, double duration) {
         m_price = price;
         m_vec = vec;
         m_recCnt = recCnt;
+        m_duration = duration;
     }
 
     /**
@@ -33,8 +36,18 @@ public:
      * Returns vector with nodes separated into two disjoint sets.
      */
     vector<int> getVec() { return m_vec; }
+
+    /**
+     * Returns number of recursive calls.
+     */
+    size_t getRecCnt() { return m_recCnt; }
+
+    /**
+     * Returns execution time.
+     */
+    double getDuration() { return m_duration; }
 private:
-    double m_price;
+    double m_price, m_duration;
     size_t m_recCnt;
     vector<int> m_vec;
 };
@@ -72,6 +85,11 @@ public:
     int getB() { return m_b; }
 
     /**
+     * Returns graph representation. 
+     */
+    vector<vector<pair<int, double>>> getGraph() { return m_graph; }
+
+    /**
      * Inserts edge between nodes u and v with the weight w to the graph.
      */
     void insertEdge(int u, int v, double w) {
@@ -93,9 +111,15 @@ public:
         vector<int> vec(m_n, -1);
         vec.at(0) = 0;
         m_recCnt = 0;
-        bbDFS(0, 0.0, vec);
 
-        return Solution(m_bestPrice, m_bestVec, m_recCnt);
+        auto start = high_resolution_clock::now(); 
+        bbDFS(0, 0.0, vec);
+        auto stop = high_resolution_clock::now();
+
+        double duration =
+            (double) duration_cast<milliseconds>(stop - start).count() / 1000;
+
+        return Solution(m_bestPrice, m_bestVec, m_recCnt, duration);
     }
 private:
     int m_n, m_k, m_b;
@@ -183,33 +207,50 @@ Graph constructGraph() {
 /**
  * Helper function which prints a solution in the human readable format.
  */
-void printSolution(Solution& s) {
-    cout << "Best price: " << s.getPrice() << endl;
+void printSolution(Solution& s, Graph &g) {
+    auto graph = g.getGraph();
+    auto vec = s.getVec();
+
+    cout << "Price: " << s.getPrice() << endl;
+
+    cout << "-------------------------" << endl;
+
+    cout << "Number of calls: " << s.getRecCnt() << endl;
+
+    cout << "-------------------------" << endl;
+
+    cout << "Execution time: " << s.getDuration() << endl;
 
     cout << "-------------------------" << endl;
 
     cout << "Set X: ";
-    for (size_t i = 0; i < s.getVec().size(); i++)
-        if (s.getVec().at(i) == 0)
+    for (size_t i = 0; i < vec.size(); i++)
+        if (vec.at(i) == 0)
             cout << i << " ";
     cout << endl;
 
     cout << "Set Y: ";
-    for (size_t i = 0; i < s.getVec().size(); i++)
-        if (s.getVec().at(i) == 1)
+    for (size_t i = 0; i < vec.size(); i++)
+        if (vec.at(i) == 1)
             cout << i << " ";
     cout << endl;
 
     cout << "-------------------------" << endl;
 
     cout << "Edges included in cut:" << endl;
-    // for (auto it: s.getEdges())
-    //     cout << "(" << it.first << ", " << it.second << ")" << endl;
+    
+    for (size_t i = 0; i < vec.size(); i++) {
+        for (auto it: graph[i]) {
+            if (vec[it.first] != vec[i])
+                cout << "(" << i << ", " << it.first << ") ";
+        }
+    }
+    cout << endl;
 }
 
 int main(int argc, char **argv) {
     Graph g = constructGraph();
     Solution s = g.solveProblem();
-    printSolution(s);
+    printSolution(s, g);
     return 0;
 }
