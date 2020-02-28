@@ -241,7 +241,7 @@ void printSolution(Solution& s, Graph &g) {
     
     for (size_t i = 0; i < vec.size(); i++) {
         for (auto it: graph[i]) {
-            if (vec[it.first] != vec[i])
+            if (vec[it.first] != vec[i] && (int) i < it.first)
                 cout << "(" << i << ", " << it.first << ") ";
         }
     }
