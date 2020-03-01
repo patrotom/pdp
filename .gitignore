@@ -78,3 +78,7 @@ dkms.conf
 !.vscode/launch.json
 !.vscode/extensions.json
 .fuse_hidden*
+
+### User Defined ###
+
+tmp/**
