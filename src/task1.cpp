@@ -141,7 +141,7 @@ private:
             return;
         }
 
-        if (m_exclusionPairs.find(next) != m_exclusionPairs.end()) {
+        if (m_exclusionPairs.find(next) != m_exclusionPairs.end()) { // Do this with vector (array) and not map, it will be more effecient
             vec.at(next) = !vec.at(m_exclusionPairs.at(next));
             double newPrice = recalculatePrice(next, price, vec);
             if (newPrice < m_bestPrice)
