@@ -67,6 +67,8 @@ public:
             m_graph.push_back(v);
         }
         m_bestPrice = n * k / 2;
+        m_recCnt = 0;
+        m_exclusionPairs = vector<int>(m_n, -1);
     }
 
     /**
@@ -110,7 +112,6 @@ public:
     Solution solveProblem() {
         vector<int> vec(m_n, -1);
         vec.at(0) = 0;
-        m_recCnt = 0;
 
         auto start = high_resolution_clock::now(); 
         bbDFS(0, 0.0, vec);
@@ -127,7 +128,7 @@ private:
     double m_bestPrice;
     vector<int> m_bestVec;
     vector<vector<pair<int, double>>> m_graph;
-    map<int, int> m_exclusionPairs;
+    vector<int> m_exclusionPairs;
 
     void bbDFS(int u, double price, vector<int> vec) {
         m_recCnt++;
@@ -141,7 +142,7 @@ private:
             return;
         }
 
-        if (m_exclusionPairs.find(next) != m_exclusionPairs.end()) { // Do this with vector (array) and not map, it will be more effecient
+        if (m_exclusionPairs.at(next) != -1) {
             vec.at(next) = !vec.at(m_exclusionPairs.at(next));
             double newPrice = recalculatePrice(next, price, vec);
             if (newPrice < m_bestPrice)
