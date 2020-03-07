@@ -69,7 +69,7 @@ public:
             vector<pair<int, double>> v;
             m_graph.push_back(v);
         }
-        m_recCnt = {0};
+        m_recCnt = 0;
         m_bestPrice = n * k / 2;
         m_exclusionPairs = vector<int>(m_n, -1);
     }
@@ -112,7 +112,7 @@ public:
     /**
      * Solves the exclusion graph cut problem and returns solution.
      */
-    Solution* solveProblem() {
+    Solution solveProblem() {
         vector<int> vec(m_n, -1);
         vec.at(0) = 0;
 
@@ -129,11 +129,11 @@ public:
         double duration =
             (double) duration_cast<milliseconds>(stop - start).count() / 1000;
 
-        return new Solution(m_bestPrice, m_bestVec, m_recCnt, duration);;
+        return Solution(m_bestPrice, m_bestVec, m_recCnt, duration);
     }
 private:
     int m_n, m_k, m_b;
-    atomic_size_t m_recCnt;
+    size_t m_recCnt;
     double m_bestPrice;
     vector<int> m_bestVec;
     vector<vector<pair<int, double>>> m_graph;
@@ -205,23 +205,23 @@ vector<T> split(const string& line) {
  * Helper function which reads the input from the stdin and constructs a new
  * graph.
  */
-Graph* constructGraph() {
+Graph constructGraph() {
     string rawInput;
     getline(cin, rawInput);
     vector<int> inits = split<int>(rawInput);
-    Graph* g = new Graph(inits.at(0), inits.at(1), inits.at(2));
+    Graph g(inits.at(0), inits.at(1), inits.at(2));
 
-    int edgesNum = g->getN() * g->getK() / 2;
+    int edgesNum = g.getN() * g.getK() / 2;
     for (int i = 0; i < edgesNum; i++) {
         getline(cin, rawInput);
         vector<double> nums = split<double>(rawInput);
-        g->insertEdge(int(nums.at(0)), int(nums.at(1)), nums.at(2));
+        g.insertEdge(int(nums.at(0)), int(nums.at(1)), nums.at(2));
     }
 
-    for (int i = 0; i < g->getB(); i++) {
+    for (int i = 0; i < g.getB(); i++) {
         getline(cin, rawInput);
         vector<int> nums = split<int>(rawInput);
-        g->insertExclusionPair(nums.at(0), nums.at(1));
+        g.insertExclusionPair(nums.at(0), nums.at(1));
     }
 
     return g;
@@ -230,19 +230,19 @@ Graph* constructGraph() {
 /**
  * Helper function which prints a solution in the human readable format.
  */
-void printSolution(unique_ptr<Solution>& s, unique_ptr<Graph>& g) {
-    auto graph = g->getGraph();
-    auto vec = s->getVec();
+void printSolution(Solution& s, Graph& g) {
+    auto graph = g.getGraph();
+    auto vec = s.getVec();
 
-    cout << "Price: " << s->getPrice() << endl;
-
-    cout << "-------------------------" << endl;
-
-    cout << "Number of calls: " << s->getRecCnt() << endl;
+    cout << "Price: " << s.getPrice() << endl;
 
     cout << "-------------------------" << endl;
 
-    cout << "Execution time: " << s->getDuration() << endl;
+    cout << "Number of calls: " << s.getRecCnt() << endl;
+
+    cout << "-------------------------" << endl;
+
+    cout << "Execution time: " << s.getDuration() << endl;
 
     cout << "-------------------------" << endl;
 
@@ -272,8 +272,8 @@ void printSolution(unique_ptr<Solution>& s, unique_ptr<Graph>& g) {
 }
 
 int main(int argc, char **argv) {
-    unique_ptr<Graph> g(constructGraph());
-    unique_ptr<Solution> s(g->solveProblem());
+    Graph g = constructGraph();
+    Solution s = g.solveProblem();
     printSolution(s, g);
 
     return 0;
