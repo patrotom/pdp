@@ -26,7 +26,7 @@ debug2: src/$(NAME2).cpp
 tests2: compile2
 	for file in test/*.txt; do \
 	    echo "$$file\n"; \
-	    out/$(NAME2).out < "$$file"; \
+	    out/$(NAME2).out 15 < "$$file"; \
 	    echo "--------------------"; \
 	done
 

@@ -9,6 +9,7 @@
 #include <atomic>
 #include <memory>
 #include <omp.h>
+#include <stdexcept>
 
 using namespace std;
 using namespace chrono;
@@ -192,11 +193,11 @@ vector<T> split(const string& line) {
  * Helper function which reads the input from the stdin and constructs a new
  * graph.
  */
-Graph constructGraph() {
+Graph constructGraph(int limit) {
     string rawInput;
     getline(cin, rawInput);
     vector<int> inits = split<int>(rawInput);
-    Graph g(inits.at(0), inits.at(1), inits.at(2), 15);
+    Graph g(inits.at(0), inits.at(1), inits.at(2), limit);
 
     int edgesNum = g.getN() * g.getK() / 2;
     for (int i = 0; i < edgesNum; i++) {
@@ -254,8 +255,37 @@ void printSolution(Solution& s, Graph& g) {
     cout << endl;
 }
 
+int processArgs(int argc, char **argv) {
+    if (argc != 2) {
+        cerr << "Invalid number of arguments" << endl;
+        return -1;
+    }
+
+    int x;
+    string arg = argv[1];
+    try {
+        size_t pos;
+        x = stoi(arg, &pos);
+        if (pos < arg.size()) {
+            cerr << "Trailing characters after number: " << arg << endl;
+            return -1;
+        }
+    } catch (invalid_argument const &ex) {
+        cerr << "Invalid number: " << arg << endl;
+        return -1;
+    } catch (out_of_range const &ex) {
+        cerr << "Number out of range: " << arg << endl;
+        return -1;
+    }
+    return x;
+}
+
 int main(int argc, char **argv) {
-    Graph g = constructGraph();
+    int l = processArgs(argc, argv);
+    if (l == -1)
+        return 1;
+
+    Graph g = constructGraph(l);
     Solution s = g.solveProblem();
     printSolution(s, g);
 
