@@ -7,6 +7,7 @@
 #include <cmath>
 #include <chrono>
 #include <atomic>
+#include <memory>
 #include <omp.h>
 
 using namespace std;
@@ -229,7 +230,7 @@ Graph* constructGraph() {
 /**
  * Helper function which prints a solution in the human readable format.
  */
-void printSolution(Solution* s, Graph* g) {
+void printSolution(unique_ptr<Solution>& s, unique_ptr<Graph>& g) {
     auto graph = g->getGraph();
     auto vec = s->getVec();
 
@@ -271,11 +272,9 @@ void printSolution(Solution* s, Graph* g) {
 }
 
 int main(int argc, char **argv) {
-    Graph *g = constructGraph();
-    Solution *s = g->solveProblem();
+    unique_ptr<Graph> g(constructGraph());
+    unique_ptr<Solution> s(g->solveProblem());
     printSolution(s, g);
 
-    delete g;
-    delete s;
     return 0;
 }
