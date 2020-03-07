@@ -23,10 +23,9 @@ public:
     /**
      * Default constructor.
      */
-    Solution(double price, vector<int> vec, size_t recCnt, double duration) {
+    Solution(double price, vector<int> vec, double duration) {
         m_price = price;
         m_vec = vec;
-        m_recCnt = recCnt;
         m_duration = duration;
     }
 
@@ -41,17 +40,11 @@ public:
     vector<int> getVec() { return m_vec; }
 
     /**
-     * Returns number of recursive calls.
-     */
-    size_t getRecCnt() { return m_recCnt; }
-
-    /**
      * Returns execution time.
      */
     double getDuration() { return m_duration; }
 private:
     double m_price, m_duration;
-    size_t m_recCnt;
     vector<int> m_vec;
 };
 
@@ -64,12 +57,11 @@ public:
     /**
      * Default constructor.
      */
-    Graph(int n, int k, int b): m_n(n), m_k(k), m_b(b) {
+    Graph(int n, int k, int b, int limit): m_n(n), m_k(k), m_b(b), m_limit(limit) {
         for (int i = 0; i < n; i++) {
             vector<pair<int, double>> v;
             m_graph.push_back(v);
         }
-        m_recCnt = 0;
         m_bestPrice = n * k / 2;
         m_exclusionPairs = vector<int>(m_n, -1);
     }
@@ -120,33 +112,34 @@ public:
         #pragma omp parallel
         {
             #pragma omp single
-            {
                 bbDFS(0, 0.0, vec);
-            }
         }
         auto stop = high_resolution_clock::now();
 
         double duration =
             (double) duration_cast<milliseconds>(stop - start).count() / 1000;
 
-        return Solution(m_bestPrice, m_bestVec, m_recCnt, duration);
+        return Solution(m_bestPrice, m_bestVec, duration);
     }
 private:
-    int m_n, m_k, m_b;
-    size_t m_recCnt;
+    int m_n, m_k, m_b, m_limit;
     double m_bestPrice;
     vector<int> m_bestVec;
     vector<vector<pair<int, double>>> m_graph;
     vector<int> m_exclusionPairs;
 
     void bbDFS(int u, double price, vector<int> vec) {
-        // m_recCnt++; This is not working properly
         int next = u + 1;
 
         if (next == m_n) {
             if (price < m_bestPrice) {
-                m_bestPrice = price;
-                m_bestVec = vec;
+                #pragma omp critical
+                {
+                    if (price < m_bestPrice) {
+                        m_bestPrice = price;
+                        m_bestVec = vec;
+                    }
+                }
             }
             return;
         }
@@ -155,29 +148,23 @@ private:
             vec.at(next) = !vec.at(m_exclusionPairs.at(next));
             double newPrice = recalculatePrice(next, price, vec);
             if (newPrice < m_bestPrice) {
-                #pragma omp task
-                {
+                #pragma omp task if (u < m_limit)
                     bbDFS(next, newPrice, vec);
-                }
             }
         }
         else {
             vec.at(next) = 0;
             double newPrice = recalculatePrice(next, price, vec);
             if (newPrice < m_bestPrice) {
-                #pragma omp task
-                {
+                #pragma omp task if (u < m_limit)
                     bbDFS(next, newPrice, vec);
-                }
             }
             
             vec.at(next) = 1;
             newPrice = recalculatePrice(next, price, vec);
             if (newPrice < m_bestPrice) {
-                #pragma omp task
-                {
+                #pragma omp task if (u < m_limit)
                     bbDFS(next, newPrice, vec);
-                }
             }
         }
         #pragma omp taskwait
@@ -209,7 +196,7 @@ Graph constructGraph() {
     string rawInput;
     getline(cin, rawInput);
     vector<int> inits = split<int>(rawInput);
-    Graph g(inits.at(0), inits.at(1), inits.at(2));
+    Graph g(inits.at(0), inits.at(1), inits.at(2), 15);
 
     int edgesNum = g.getN() * g.getK() / 2;
     for (int i = 0; i < edgesNum; i++) {
@@ -235,10 +222,6 @@ void printSolution(Solution& s, Graph& g) {
     auto vec = s.getVec();
 
     cout << "Price: " << s.getPrice() << endl;
-
-    cout << "-------------------------" << endl;
-
-    cout << "Number of calls: " << s.getRecCnt() << endl;
 
     cout << "-------------------------" << endl;
 
