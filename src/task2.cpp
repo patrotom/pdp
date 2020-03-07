@@ -255,6 +255,9 @@ void printSolution(Solution& s, Graph& g) {
     cout << endl;
 }
 
+/**
+ * Helper function to process input command line arguments
+ */
 int processArgs(int argc, char **argv) {
     if (argc != 2) {
         cerr << "Invalid number of arguments" << endl;
