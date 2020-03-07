@@ -6,6 +6,8 @@
 #include <iterator>
 #include <cmath>
 #include <chrono>
+#include <atomic>
+#include <omp.h>
 
 using namespace std;
 using namespace chrono;
@@ -66,8 +68,8 @@ public:
             vector<pair<int, double>> v;
             m_graph.push_back(v);
         }
+        m_recCnt = {0};
         m_bestPrice = n * k / 2;
-        m_recCnt = 0;
         m_exclusionPairs = vector<int>(m_n, -1);
     }
 
@@ -109,29 +111,35 @@ public:
     /**
      * Solves the exclusion graph cut problem and returns solution.
      */
-    Solution solveProblem() {
+    Solution* solveProblem() {
         vector<int> vec(m_n, -1);
         vec.at(0) = 0;
 
-        auto start = high_resolution_clock::now(); 
-        bbDFS(0, 0.0, vec);
+        auto start = high_resolution_clock::now();
+        #pragma omp parallel
+        {
+            #pragma omp single
+            {
+                bbDFS(0, 0.0, vec);
+            }
+        }
         auto stop = high_resolution_clock::now();
 
         double duration =
             (double) duration_cast<milliseconds>(stop - start).count() / 1000;
 
-        return Solution(m_bestPrice, m_bestVec, m_recCnt, duration);
+        return new Solution(m_bestPrice, m_bestVec, m_recCnt, duration);;
     }
 private:
     int m_n, m_k, m_b;
-    size_t m_recCnt;
+    atomic_size_t m_recCnt;
     double m_bestPrice;
     vector<int> m_bestVec;
     vector<vector<pair<int, double>>> m_graph;
     vector<int> m_exclusionPairs;
 
     void bbDFS(int u, double price, vector<int> vec) {
-        m_recCnt++;
+        // m_recCnt++; This is not working properly
         int next = u + 1;
 
         if (next == m_n) {
@@ -145,20 +153,33 @@ private:
         if (m_exclusionPairs.at(next) != -1) {
             vec.at(next) = !vec.at(m_exclusionPairs.at(next));
             double newPrice = recalculatePrice(next, price, vec);
-            if (newPrice < m_bestPrice)
-                bbDFS(next, newPrice, vec);
+            if (newPrice < m_bestPrice) {
+                #pragma omp task
+                {
+                    bbDFS(next, newPrice, vec);
+                }
+            }
         }
         else {
             vec.at(next) = 0;
             double newPrice = recalculatePrice(next, price, vec);
-            if (newPrice < m_bestPrice)
-                bbDFS(next, newPrice, vec);
+            if (newPrice < m_bestPrice) {
+                #pragma omp task
+                {
+                    bbDFS(next, newPrice, vec);
+                }
+            }
             
             vec.at(next) = 1;
             newPrice = recalculatePrice(next, price, vec);
-            if (newPrice < m_bestPrice)
-                bbDFS(next, newPrice, vec);
+            if (newPrice < m_bestPrice) {
+                #pragma omp task
+                {
+                    bbDFS(next, newPrice, vec);
+                }
+            }
         }
+        #pragma omp taskwait
     }
 
     double recalculatePrice(int u, double price, const vector<int> &vec) {
@@ -183,23 +204,23 @@ vector<T> split(const string& line) {
  * Helper function which reads the input from the stdin and constructs a new
  * graph.
  */
-Graph constructGraph() {
+Graph* constructGraph() {
     string rawInput;
     getline(cin, rawInput);
     vector<int> inits = split<int>(rawInput);
-    Graph g(inits.at(0), inits.at(1), inits.at(2));
+    Graph* g = new Graph(inits.at(0), inits.at(1), inits.at(2));
 
-    int edgesNum = g.getN() * g.getK() / 2;
+    int edgesNum = g->getN() * g->getK() / 2;
     for (int i = 0; i < edgesNum; i++) {
         getline(cin, rawInput);
         vector<double> nums = split<double>(rawInput);
-        g.insertEdge(int(nums.at(0)), int(nums.at(1)), nums.at(2));
+        g->insertEdge(int(nums.at(0)), int(nums.at(1)), nums.at(2));
     }
 
-    for (int i = 0; i < g.getB(); i++) {
+    for (int i = 0; i < g->getB(); i++) {
         getline(cin, rawInput);
         vector<int> nums = split<int>(rawInput);
-        g.insertExclusionPair(nums.at(0), nums.at(1));
+        g->insertExclusionPair(nums.at(0), nums.at(1));
     }
 
     return g;
@@ -208,19 +229,19 @@ Graph constructGraph() {
 /**
  * Helper function which prints a solution in the human readable format.
  */
-void printSolution(Solution& s, Graph &g) {
-    auto graph = g.getGraph();
-    auto vec = s.getVec();
+void printSolution(Solution* s, Graph* g) {
+    auto graph = g->getGraph();
+    auto vec = s->getVec();
 
-    cout << "Price: " << s.getPrice() << endl;
-
-    cout << "-------------------------" << endl;
-
-    cout << "Number of calls: " << s.getRecCnt() << endl;
+    cout << "Price: " << s->getPrice() << endl;
 
     cout << "-------------------------" << endl;
 
-    cout << "Execution time: " << s.getDuration() << endl;
+    cout << "Number of calls: " << s->getRecCnt() << endl;
+
+    cout << "-------------------------" << endl;
+
+    cout << "Execution time: " << s->getDuration() << endl;
 
     cout << "-------------------------" << endl;
 
@@ -250,8 +271,11 @@ void printSolution(Solution& s, Graph &g) {
 }
 
 int main(int argc, char **argv) {
-    Graph g = constructGraph();
-    Solution s = g.solveProblem();
+    Graph *g = constructGraph();
+    Solution *s = g->solveProblem();
     printSolution(s, g);
+
+    delete g;
+    delete s;
     return 0;
 }
