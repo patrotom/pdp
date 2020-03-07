@@ -20,10 +20,9 @@ public:
     /**
      * Default constructor.
      */
-    Solution(double price, vector<int> vec, size_t recCnt, double duration) {
+    Solution(double price, vector<int> vec, double duration) {
         m_price = price;
         m_vec = vec;
-        m_recCnt = recCnt;
         m_duration = duration;
     }
 
@@ -38,17 +37,11 @@ public:
     vector<int> getVec() { return m_vec; }
 
     /**
-     * Returns number of recursive calls.
-     */
-    size_t getRecCnt() { return m_recCnt; }
-
-    /**
      * Returns execution time.
      */
     double getDuration() { return m_duration; }
 private:
     double m_price, m_duration;
-    size_t m_recCnt;
     vector<int> m_vec;
 };
 
@@ -67,7 +60,6 @@ public:
             m_graph.push_back(v);
         }
         m_bestPrice = n * k / 2;
-        m_recCnt = 0;
         m_exclusionPairs = vector<int>(m_n, -1);
     }
 
@@ -120,18 +112,16 @@ public:
         double duration =
             (double) duration_cast<milliseconds>(stop - start).count() / 1000;
 
-        return Solution(m_bestPrice, m_bestVec, m_recCnt, duration);
+        return Solution(m_bestPrice, m_bestVec, duration);
     }
 private:
     int m_n, m_k, m_b;
-    size_t m_recCnt;
     double m_bestPrice;
     vector<int> m_bestVec;
     vector<vector<pair<int, double>>> m_graph;
     vector<int> m_exclusionPairs;
 
     void bbDFS(int u, double price, vector<int> vec) {
-        m_recCnt++;
         int next = u + 1;
 
         if (next == m_n) {
@@ -213,10 +203,6 @@ void printSolution(Solution& s, Graph &g) {
     auto vec = s.getVec();
 
     cout << "Price: " << s.getPrice() << endl;
-
-    cout << "-------------------------" << endl;
-
-    cout << "Number of calls: " << s.getRecCnt() << endl;
 
     cout << "-------------------------" << endl;
 
