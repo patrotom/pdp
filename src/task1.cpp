@@ -121,7 +121,7 @@ private:
     vector<vector<pair<int, double>>> m_graph;
     vector<int> m_exclusionPairs;
 
-    void bbDFS(int u, double price, vector<int> vec) {
+    void bbDFS(int u, double price, vector<int>& vec) {
         int next = u + 1;
 
         if (next == m_n) {
@@ -135,19 +135,26 @@ private:
         if (m_exclusionPairs.at(next) != -1) {
             vec.at(next) = !vec.at(m_exclusionPairs.at(next));
             double newPrice = recalculatePrice(next, price, vec);
-            if (newPrice < m_bestPrice)
-                bbDFS(next, newPrice, vec);
+            if (newPrice < m_bestPrice) {
+                vector<int> newVec = vec;
+                bbDFS(next, newPrice, newVec);
+
+            }
         }
         else {
             vec.at(next) = 0;
             double newPrice = recalculatePrice(next, price, vec);
-            if (newPrice < m_bestPrice)
-                bbDFS(next, newPrice, vec);
+            if (newPrice < m_bestPrice) {
+                vector<int> newVec = vec;
+                bbDFS(next, newPrice, newVec);
+            }
             
             vec.at(next) = 1;
             newPrice = recalculatePrice(next, price, vec);
-            if (newPrice < m_bestPrice)
-                bbDFS(next, newPrice, vec);
+            if (newPrice < m_bestPrice) {
+                vector<int> newVec = vec;
+                bbDFS(next, newPrice, newVec);
+            }
         }
     }
 
