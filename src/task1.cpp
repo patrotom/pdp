@@ -6,6 +6,7 @@
 #include <iterator>
 #include <cmath>
 #include <chrono>
+#include <algorithm>
 
 using namespace std;
 using namespace chrono;
@@ -132,33 +133,34 @@ private:
             return;
         }
 
+        double newPrice;
+
         if (m_exclusionPairs.at(next) != -1) {
             vec.at(next) = !vec.at(m_exclusionPairs.at(next));
-            double newPrice = recalculatePrice(next, price, vec);
-            if (newPrice < m_bestPrice) {
-                vector<int> newVec = vec;
-                bbDFS(next, newPrice, newVec);
-
-            }
+            newPrice = recalculatePrice(next, price, vec);
+            if (newPrice < m_bestPrice)
+                bbDFS(next, newPrice, vec);
         }
         else {
+            vector<int> newVec;
+
             vec.at(next) = 0;
-            double newPrice = recalculatePrice(next, price, vec);
+            newPrice = recalculatePrice(next, price, vec);
             if (newPrice < m_bestPrice) {
-                vector<int> newVec = vec;
+                newVec = vec;
                 bbDFS(next, newPrice, newVec);
             }
             
             vec.at(next) = 1;
             newPrice = recalculatePrice(next, price, vec);
             if (newPrice < m_bestPrice) {
-                vector<int> newVec = vec;
+                newVec = vec;
                 bbDFS(next, newPrice, newVec);
             }
         }
     }
 
-    double recalculatePrice(int u, double price, const vector<int> &vec) {
+    double recalculatePrice(int u, double price, const vector<int>& vec) {
         for (auto n: m_graph.at(u))
             if (vec.at(n.first) != -1 && vec.at(n.first) != vec.at(u))
                 price += n.second;
