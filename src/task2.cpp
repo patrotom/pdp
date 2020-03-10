@@ -6,8 +6,7 @@
 #include <iterator>
 #include <cmath>
 #include <chrono>
-#include <atomic>
-#include <memory>
+#include <algorithm>
 #include <omp.h>
 #include <stdexcept>
 
@@ -129,7 +128,7 @@ private:
     vector<vector<pair<int, double>>> m_graph;
     vector<int> m_exclusionPairs;
 
-    void bbDFS(int u, double price, vector<int> vec) {
+    void bbDFS(int u, double price, vector<int>& vec) {
         int next = u + 1;
 
         if (next == m_n) {
@@ -145,33 +144,38 @@ private:
             return;
         }
 
+        double newPrice;
+
         if (m_exclusionPairs.at(next) != -1) {
             vec.at(next) = !vec.at(m_exclusionPairs.at(next));
-            double newPrice = recalculatePrice(next, price, vec);
-            if (newPrice < m_bestPrice) {
-                #pragma omp task if (u < m_limit)
-                    bbDFS(next, newPrice, vec);
-            }
-        }
-        else {
-            vec.at(next) = 0;
-            double newPrice = recalculatePrice(next, price, vec);
-            if (newPrice < m_bestPrice) {
-                #pragma omp task if (u < m_limit)
-                    bbDFS(next, newPrice, vec);
-            }
-            
-            vec.at(next) = 1;
             newPrice = recalculatePrice(next, price, vec);
             if (newPrice < m_bestPrice) {
                 #pragma omp task if (u < m_limit)
                     bbDFS(next, newPrice, vec);
             }
         }
-        #pragma omp taskwait
+        else {
+            vector<int> newVec;
+
+            vec.at(next) = 0;
+            newPrice = recalculatePrice(next, price, vec);
+            if (newPrice < m_bestPrice) {
+                newVec = vec;
+                #pragma omp task if (u < m_limit)
+                    bbDFS(next, newPrice, newVec);
+            }
+            
+            vec.at(next) = 1;
+            newPrice = recalculatePrice(next, price, vec);
+            if (newPrice < m_bestPrice) {
+                newVec = vec;
+                #pragma omp task if (u < m_limit)
+                    bbDFS(next, newPrice, newVec);
+            }
+        }
     }
 
-    double recalculatePrice(int u, double price, const vector<int> &vec) {
+    double recalculatePrice(int u, double price, const vector<int>& vec) {
         for (auto n: m_graph.at(u))
             if (vec.at(n.first) != -1 && vec.at(n.first) != vec.at(u))
                 price += n.second;
