@@ -7,6 +7,8 @@
 #include <cmath>
 #include <chrono>
 #include <algorithm>
+#include <omp.h>
+#include <stdexcept>
 
 using namespace std;
 using namespace chrono;
@@ -55,7 +57,7 @@ public:
     /**
      * Default constructor.
      */
-    Graph(int n, int k, int b): m_n(n), m_k(k), m_b(b) {
+    Graph(int n, int k, int b, int limit): m_n(n), m_k(k), m_b(b), m_limit(limit) {
         for (int i = 0; i < n; i++) {
             vector<pair<int, double>> v;
             m_graph.push_back(v);
@@ -106,8 +108,12 @@ public:
         vector<int> vec(m_n, -1);
         vec.at(0) = 0;
 
-        auto start = high_resolution_clock::now(); 
-        bbDFS(0, 0.0, vec);
+        auto start = high_resolution_clock::now();
+        #pragma omp parallel
+        {
+            #pragma omp single
+                bbDFS(0, 0.0, vec);
+        }
         auto stop = high_resolution_clock::now();
 
         double duration =
@@ -116,7 +122,7 @@ public:
         return Solution(m_bestPrice, m_bestVec, duration);
     }
 private:
-    int m_n, m_k, m_b;
+    int m_n, m_k, m_b, m_limit;
     double m_bestPrice;
     vector<int> m_bestVec;
     vector<vector<pair<int, double>>> m_graph;
@@ -127,8 +133,13 @@ private:
 
         if (next == m_n) {
             if (price < m_bestPrice) {
-                m_bestPrice = price;
-                m_bestVec = vec;
+                #pragma omp critical
+                {
+                    if (price < m_bestPrice) {
+                        m_bestPrice = price;
+                        m_bestVec = vec;
+                    }
+                }
             }
             return;
         }
@@ -138,8 +149,10 @@ private:
         if (m_exclusionPairs.at(next) != -1) {
             vec.at(next) = !vec.at(m_exclusionPairs.at(next));
             newPrice = recalculatePrice(next, price, vec);
-            if (newPrice < m_bestPrice)
-                bbDFS(next, newPrice, vec);
+            if (newPrice < m_bestPrice) {
+                #pragma omp task if (u < m_limit)
+                    bbDFS(next, newPrice, vec);
+            }
         }
         else {
             vector<int> newVec;
@@ -148,14 +161,16 @@ private:
             newPrice = recalculatePrice(next, price, vec);
             if (newPrice < m_bestPrice) {
                 newVec = vec;
-                bbDFS(next, newPrice, newVec);
+                #pragma omp task if (u < m_limit)
+                    bbDFS(next, newPrice, newVec);
             }
             
             vec.at(next) = 1;
             newPrice = recalculatePrice(next, price, vec);
             if (newPrice < m_bestPrice) {
                 newVec = vec;
-                bbDFS(next, newPrice, newVec);
+                #pragma omp task if (u < m_limit)
+                    bbDFS(next, newPrice, newVec);
             }
         }
     }
@@ -182,11 +197,11 @@ vector<T> split(const string& line) {
  * Helper function which reads the input from the stdin and constructs a new
  * graph.
  */
-Graph constructGraph() {
+Graph constructGraph(int limit) {
     string rawInput;
     getline(cin, rawInput);
     vector<int> inits = split<int>(rawInput);
-    Graph g(inits.at(0), inits.at(1), inits.at(2));
+    Graph g(inits.at(0), inits.at(1), inits.at(2), limit);
 
     int edgesNum = g.getN() * g.getK() / 2;
     for (int i = 0; i < edgesNum; i++) {
@@ -207,7 +222,7 @@ Graph constructGraph() {
 /**
  * Helper function which prints a solution in the human readable format.
  */
-void printSolution(Solution& s, Graph &g) {
+void printSolution(Solution& s, Graph& g) {
     auto graph = g.getGraph();
     auto vec = s.getVec();
 
@@ -244,9 +259,42 @@ void printSolution(Solution& s, Graph &g) {
     cout << endl;
 }
 
+/**
+ * Helper function to process input command line arguments
+ */
+int processArgs(int argc, char **argv) {
+    if (argc != 2) {
+        cerr << "Invalid number of arguments" << endl;
+        return -1;
+    }
+
+    int x;
+    string arg = argv[1];
+    try {
+        size_t pos;
+        x = stoi(arg, &pos);
+        if (pos < arg.size()) {
+            cerr << "Trailing characters after number: " << arg << endl;
+            return -1;
+        }
+    } catch (invalid_argument const &ex) {
+        cerr << "Invalid number: " << arg << endl;
+        return -1;
+    } catch (out_of_range const &ex) {
+        cerr << "Number out of range: " << arg << endl;
+        return -1;
+    }
+    return x;
+}
+
 int main(int argc, char **argv) {
-    Graph g = constructGraph();
+    int l = processArgs(argc, argv);
+    if (l == -1)
+        return 1;
+
+    Graph g = constructGraph(l);
     Solution s = g.solveProblem();
     printSolution(s, g);
+
     return 0;
 }
