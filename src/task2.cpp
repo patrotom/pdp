@@ -173,6 +173,7 @@ private:
                     bbDFS(next, newPrice, newVec);
             }
         }
+        #pragma omp taskwait
     }
 
     double recalculatePrice(int u, double price, const vector<int>& vec) {
