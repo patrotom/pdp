@@ -2,13 +2,9 @@
 #include <string>
 #include <sstream>
 #include <vector>
-#include <map>
 #include <iterator>
-#include <cmath>
 #include <chrono>
-#include <algorithm>
 #include <omp.h>
-#include <stdexcept>
 
 using namespace std;
 using namespace chrono;
