@@ -2,6 +2,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <queue>
 #include <iterator>
 #include <chrono>
 #include <omp.h>
@@ -9,66 +10,25 @@
 using namespace std;
 using namespace chrono;
 
-class Problem {
+typedef vector<vector<pair<int, double>>> graph;
+
+class State {
 public:
-    /**
-     * Default constructor.
-     */
-    Problem(int n, int k, int b, int limit): m_n(n), m_k(k), m_b(b) {
-        m_graph = vector<vector<pair<int, double>>>(
-            m_n, vector<pair<int, double>>());
-        m_exclusionPairs = vector<int>(m_n, -1);
+    State(int size): price(0), depth(0) {
+        vec = vector<int>(size, -1);
+        vec.at(0) = 0;
     }
 
-    /**
-     * Returns number of nodes in the graph.
-     */
-    int getN() { return m_n; }
-
-    /**
-     * Returns avarage degree of a node.
-     */
-    int getK() { return m_k; }
-
-    /**
-     * Returns number of exclusion pairs.
-     */
-    int getB() { return m_b; }
-
-    /**
-     * Returns graph representation. 
-     */
-    vector<vector<pair<int, double>>> getGraph() { return m_graph; }
-
-    /**
-     * Inserts edge between nodes u and v with the weight w to the graph.
-     */
-    void insertEdge(int u, int v, double w) {
-        m_graph.at(u).push_back(make_pair(v, w));
-        m_graph.at(v).push_back(make_pair(u, w));
+    State(State& prevState, int next) {
+        vec = prevState.vec;
+        depth++;
+        vec.at(depth) = next;
     }
 
-    /**
-     * Inserts a new exclusion pair between u and v.
-     */
-    void insertExclusionPair(int u, int v) {
-        m_exclusionPairs.at(v) = u;
-    }
-private:
-    int m_n, m_k, m_b;
-    vector<vector<pair<int, double>>> m_graph;
-    vector<int> m_exclusionPairs;
+    vector<int> vec;
+    double price;
+    int depth;
 };
-
-/**
- * Helper function which splits a string through a whitespace and adds the
- * results to the vector.
- */
-template<typename T>
-vector<T> split(const string& line) {
-    istringstream is(line);
-    return vector<T>(istream_iterator<T>(is), istream_iterator<T>());
-}
 
 /**
  * Serves as a placeholder for a solution variables. Solution consists of best
@@ -105,15 +65,116 @@ private:
     vector<int> m_vec;
 };
 
+class Problem {
+public:
+    /**
+     * Default constructor.
+     */
+    Problem(int n, int k, int b, int mlpCons):
+        m_n(n), m_k(k), m_b(b), m_mlpCons(mlpCons),
+        m_graph(graph(m_n, vector<pair<int, double>>())),
+        m_exclusionPairs(vector<int>(m_n, -1)) {}
+
+    /**
+     * Returns number of nodes in the graph.
+     */
+    int getN() { return m_n; }
+
+    /**
+     * Returns avarage degree of a node.
+     */
+    int getK() { return m_k; }
+
+    /**
+     * Returns number of exclusion pairs.
+     */
+    int getB() { return m_b; }
+
+    /**
+     * Returns graph representation. 
+     */
+    graph getGraph() { return m_graph; }
+
+    /**
+     * Inserts edge between nodes u and v with the weight w to the graph.
+     */
+    void insertEdge(int u, int v, double w) {
+        m_graph.at(u).push_back(make_pair(v, w));
+        m_graph.at(v).push_back(make_pair(u, w));
+    }
+
+    /**
+     * Inserts a new exclusion pair between u and v.
+     */
+    void insertExclusionPair(int u, int v) {
+        m_exclusionPairs.at(v) = u;
+    }
+
+    Solution solveProblem() {
+        generateStates();
+
+    }
+private:
+    int m_n, m_k, m_b, m_mlpCons;
+    graph m_graph;
+    vector<int> m_exclusionPairs;
+    vector<State> m_states;
+
+    void recalculatePrice(State& state) {
+        for (auto n: m_graph.at(state.depth))
+            if (state.vec.at(n.first) != -1 &&
+                state.vec.at(n.first) != state.vec.at(state.depth))
+                state.price += n.second;
+    }
+
+    void generateStates() {
+        State s0(m_n);
+        queue<State> q;
+        q.push(s0);
+        double bestPrice = m_n * m_k / 2;
+
+        while(q.size() <= size_t(m_n * m_mlpCons) && !q.empty()) {
+            State s = q.front();
+            q.pop();
+            if ((s.depth + 1) == m_n)
+                break;
+
+            State tmpState = State(s, 0);
+            recalculatePrice(tmpState);
+            if (tmpState.price < bestPrice)
+                q.push(tmpState);
+            
+            tmpState = State(s, 1);
+            if (tmpState.price < bestPrice)
+                q.push(tmpState);
+        }
+
+        while (!q.empty()) {
+            m_states.push_back(q.front());
+            q.pop();
+        }
+    }
+};
+
+/**
+ * Helper function which splits a string through a whitespace and adds the
+ * results to the vector.
+ */
+template<typename T>
+vector<T> split(const string& line) {
+    istringstream is(line);
+    return vector<T>(istream_iterator<T>(is), istream_iterator<T>());
+}
+
 /**
  * Helper function which reads the input from the stdin and constructs a new
  * problem.
  */
-Problem generateProblem(int limit) {
+Problem generateProblem(int mlpCons) {
     string rawInput;
     getline(cin, rawInput);
     vector<int> inits = split<int>(rawInput);
-    Problem p(inits.at(0), inits.at(1), inits.at(2), limit);
+    Problem p(inits.at(0), inits.at(1), inits.at(2), mlpCons);
 
     int edgesNum = p.getN() * p.getK() / 2;
     for (int i = 0; i < edgesNum; i++) {
@@ -171,6 +232,40 @@ void printSolution(Solution& s, Problem& p) {
     cout << endl;
 }
 
-int main() {
+/**
+ * Helper function to process input command line arguments
+ */
+int processArgs(int argc, char **argv) {
+    if (argc != 2) {
+        cerr << "Invalid number of arguments" << endl;
+        return -1;
+    }
+
+    int x;
+    string arg = argv[1];
+    try {
+        size_t pos;
+        x = stoi(arg, &pos);
+        if (pos < arg.size()) {
+            cerr << "Trailing characters after number: " << arg << endl;
+            return -1;
+        }
+    } catch (invalid_argument const &ex) {
+        cerr << "Invalid number: " << arg << endl;
+        return -1;
+    } catch (out_of_range const &ex) {
+        cerr << "Number out of range: " << arg << endl;
+        return -1;
+    }
+    return x;
+}
+
+int main(int argc, char **argv) {
+    int mlpCons = processArgs(argc, argv);
+    if (mlpCons == -1)
+        return 1;
+
+    Problem p = generateProblem(mlpCons);
+
     return 0;
 }
