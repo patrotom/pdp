@@ -10,7 +10,7 @@ using namespace std;
 using namespace chrono;
 
 /**
- * Servers as a placeholder for a solution variables. Solution consists of best
+ * Serves as a placeholder for a solution variables. Solution consists of best
  * price, number of recursive calls, execution time of B&B DFS algorithm, and
  * the vector with nodes that are separated into two disjoint sets.
  */
