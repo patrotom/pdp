@@ -21,7 +21,7 @@ public:
 
     State(State& prevState, int next) {
         vec = prevState.vec;
-        depth++;
+        depth = prevState.depth + 1;
         vec.at(depth) = next;
     }
 
@@ -110,7 +110,7 @@ public:
         m_exclusionPairs.at(v) = u;
     }
 
-    Solution solveProblem() {
+    void solveProblem() {
         generateStates();
 
     }
@@ -139,12 +139,13 @@ private:
             if ((s.depth + 1) == m_n)
                 break;
 
-            State tmpState = State(s, 0);
+            State tmpState = State(s, 1);
             recalculatePrice(tmpState);
             if (tmpState.price < bestPrice)
                 q.push(tmpState);
             
-            tmpState = State(s, 1);
+            tmpState = State(s, 0);
+            recalculatePrice(tmpState);
             if (tmpState.price < bestPrice)
                 q.push(tmpState);
         }
@@ -153,6 +154,8 @@ private:
             m_states.push_back(q.front());
             q.pop();
         }
+
+
     }
 };
 
@@ -266,6 +269,7 @@ int main(int argc, char **argv) {
         return 1;
 
     Problem p = generateProblem(mlpCons);
+    p.solveProblem();
 
     return 0;
 }

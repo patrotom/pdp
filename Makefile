@@ -12,7 +12,7 @@ NAME3=task3
 define tests
 	for file in test/*.txt; do \
 	    echo "$$file\n"; \
-	    out/$(1).out 15 < "$$file"; \
+	    out/$(1).out $(2) < "$$file"; \
 	    echo "--------------------"; \
 	done
 endef
@@ -33,7 +33,7 @@ compile2:
 debug2:
 	$(DEBUG_PAR) src/$(NAME2).cpp -o out/$(NAME2).out
 tests2: compile2
-	$(call tests,$(NAME2))
+	$(call tests,$(NAME2),15)
 
 task3: compile3
 	out/$(NAME3).out
@@ -42,7 +42,7 @@ compile3:
 debug3:
 	$(DEBUG_PAR) src/$(NAME3).cpp -o out/$(NAME3).out
 tests3: compile3
-	$(call tests,$(NAME3))
+	$(call tests,$(NAME3),3000)
 
 clean:
 	rm -rf out/*
