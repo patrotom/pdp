@@ -12,18 +12,34 @@ using namespace chrono;
 
 typedef vector<vector<pair<int, double>>> graph;
 
+/**
+ * Represents a state of problem we want to solve. State consists of price,
+ * depth (current bit in vector) and vector of bits.
+ */
 struct State {
-    State() {}
+    /**
+     * Default constructor.
+     */
+    State() = default;
 
+    /**
+     * Constructor used to create an initial state of the problem.
+     */
     State(int size): price(0), depth(0), vec(vector<int>(size, -1)) {
         vec.at(0) = 0;
     }
 
+    /**
+     * Sets value of next bit and updates depth.
+     */
     void updateState(int next) {
         depth++;
         vec.at(depth) = next;
     }
 
+    /**
+     * Updates price and depth.
+     */
     void updateState(double newPrice) {
         depth++;
         price = newPrice;
@@ -36,12 +52,17 @@ struct State {
 
 /**
  * Serves as a placeholder for a solution variables. Solution consists of best
- * price, number of recursive calls, execution time of B&B DFS algorithm, and
- * the vector with nodes that are separated into two disjoint sets.
+ * instance of state and execution time of B&B DFS algorithm.
  */
 struct Solution {
-    Solution() {}
+    /**
+     * Default constructor.
+     */
+    Solution() = default;
 
+    /**
+     * Constructor used to create an initial ("worst") solution.
+     */
     Solution(int size, double initPrice): m_state(State(size)) {
         m_state.price = initPrice;
     }
@@ -50,10 +71,14 @@ struct Solution {
     double m_duration;
 };
 
+/**
+ * Is responsible for creating graph represenation of a problem and solving this
+ * problem.
+ */
 class Problem {
 public:
     /**
-     * Default constructor.
+     * Constructor used to initialize all of the essential variables.
      */
     Problem(int n, int k, int b, int mlpCons): m_n(n), m_k(k), m_b(b),
                                                m_mlpCons(mlpCons),
@@ -96,6 +121,10 @@ public:
         m_exclusionPairs.at(v) = u;
     }
 
+    /**
+     * Solves the problem using OpenMP and data parallelism technique. Returns
+     * the final solution.
+     */
     Solution solveProblem() {
         auto start = high_resolution_clock::now();
         Solution bestSol;
