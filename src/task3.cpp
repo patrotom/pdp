@@ -14,22 +14,23 @@ typedef vector<vector<pair<int, double>>> graph;
 
 class State {
 public:
-    State(int size): price(0), depth(0) {
-        vec = vector<int>(size, -1);
+
+    State() {}
+
+    State(int size): price(0), depth(0), vec(vector<int>(size, -1)) {
         vec.at(0) = 0;
     }
 
-    State(State& prevState, int next, graph& graph) {
-        vec = prevState.vec;
-        depth = prevState.depth + 1;
+    State(const State& prevState, int next, graph& graph): depth(prevState.depth + 1),
+                                                           vec(prevState.vec) {
         vec.at(depth) = next;
         price = prevState.price;
         recalculatePrice(graph);
     }
 
-    vector<int> vec;
     double price;
     int depth;
+    vector<int> vec;
 private:
     void recalculatePrice(graph& graph) {
         for (auto n: graph.at(depth))
@@ -46,32 +47,20 @@ private:
  */
 class Solution {
 public:
-    /**
-     * Default constructor.
-     */
-    Solution(double price, vector<int> vec, double duration) {
-        m_price = price;
-        m_vec = vec;
-        m_duration = duration;
+
+    Solution() {}
+
+    Solution(int size, double initPrice): m_state(State(size)) {
+        m_state.price = initPrice;
     }
 
     /**
-     * Returns best price.
+     * Default constructor.
      */
-    double getPrice() { return m_price; }
+    Solution(State state): m_state(state) {}
 
-    /**
-     * Returns vector with nodes separated into two disjoint sets.
-     */
-    vector<int> getVec() { return m_vec; }
-
-    /**
-     * Returns execution time.
-     */
-    double getDuration() { return m_duration; }
-private:
-    double m_price, m_duration;
-    vector<int> m_vec;
+    State m_state;
+    double m_duration;
 };
 
 class Problem {
@@ -79,10 +68,11 @@ public:
     /**
      * Default constructor.
      */
-    Problem(int n, int k, int b, int mlpCons):
-        m_n(n), m_k(k), m_b(b), m_mlpCons(mlpCons),
-        m_graph(graph(m_n, vector<pair<int, double>>())),
-        m_exclusionPairs(vector<int>(m_n, -1)), m_bestPrice(n * k / 2) {}
+    Problem(int n, int k, int b, int mlpCons): m_n(n), m_k(k), m_b(b),
+                                               m_mlpCons(mlpCons),
+                                               m_bestPrice(n * k / 2),
+                                               m_graph(graph(m_n, vector<pair<int, double>>())),
+                                               m_exclusionPairs(vector<int>(m_n, -1)) {}
 
     /**
      * Returns number of nodes in the graph.
@@ -120,19 +110,29 @@ public:
     }
 
     Solution solveProblem() {
-
         auto start = high_resolution_clock::now();
+        Solution bestSol;
+        double initPrice = m_bestPrice;
         generateStates();
+        #pragma omp parallel for
+            for (size_t i = 0; i < m_states.size(); i++) {
+                Solution sol(m_n, initPrice);
+                bbDFS(m_states[i], sol);
+                #pragma omp critical
+                    if (sol.m_state.price < m_bestPrice && (sol.m_state.depth + 1) == m_n) {
+                        bestSol = sol;
+                        m_bestPrice = sol.m_state.price;
+                    }
+            }
         auto stop = high_resolution_clock::now();
 
-        double duration =
+        bestSol.m_duration =
             (double) duration_cast<milliseconds>(stop - start).count() / 1000;
-
+        return bestSol;
     }
 private:
     int m_n, m_k, m_b, m_mlpCons;
     double m_bestPrice;
-    vector<int> m_bestVec;
     graph m_graph;
     vector<int> m_exclusionPairs;
     vector<State> m_states;
@@ -162,17 +162,34 @@ private:
             }
         }
 
-        size_t s = q.size();
-
         while (!q.empty()) {
             m_states.push_back(q.front());
             q.pop();
         }
-
     }
 
-    void bbDFS() {
+    void bbDFS(const State& state, Solution& sol) {
+        if ((state.depth + 1) == m_n) {
+            if (state.price < sol.m_state.price)
+                sol.m_state = state;
+            return;
+        }
 
+        if (m_exclusionPairs.at(state.depth + 1) != -1) {
+            int next = !state.vec.at(m_exclusionPairs.at(state.depth + 1));
+            State tmpState = State(state, next, m_graph);
+            if (tmpState.price < sol.m_state.price)
+                bbDFS(tmpState, sol);
+        }
+        else {
+            State tmpState = State(state, 1, m_graph);
+            if (tmpState.price < sol.m_state.price)
+                bbDFS(tmpState, sol);
+            
+            tmpState = State(state, 0, m_graph);
+            if (tmpState.price < sol.m_state.price)
+                bbDFS(tmpState, sol);
+        }
     }
 };
 
@@ -217,13 +234,13 @@ Problem generateProblem(int mlpCons) {
  */
 void printSolution(Solution& s, Problem& p) {
     auto graph = p.getGraph();
-    auto vec = s.getVec();
+    auto vec = s.m_state.vec;
 
-    cout << "Price: " << s.getPrice() << endl;
+    cout << "Price: " << s.m_state.price << endl;
 
     cout << "-------------------------" << endl;
 
-    cout << "Execution time: " << s.getDuration() << endl;
+    cout << "Execution time: " << s.m_duration << endl;
 
     cout << "-------------------------" << endl;
 
@@ -286,7 +303,8 @@ int main(int argc, char **argv) {
         return 1;
 
     Problem p = generateProblem(mlpCons);
-    p.solveProblem();
+    Solution s = p.solveProblem();
+    printSolution(s, p);
 
     return 0;
 }
