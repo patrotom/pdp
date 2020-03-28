@@ -19,15 +19,24 @@ public:
         vec.at(0) = 0;
     }
 
-    State(State& prevState, int next) {
+    State(State& prevState, int next, graph& graph) {
         vec = prevState.vec;
         depth = prevState.depth + 1;
         vec.at(depth) = next;
+        price = prevState.price;
+        recalculatePrice(graph);
     }
 
     vector<int> vec;
     double price;
     int depth;
+private:
+    void recalculatePrice(graph& graph) {
+        for (auto n: graph.at(depth))
+            if (vec.at(n.first) != -1 &&
+                vec.at(n.first) != vec.at(depth))
+                price += n.second;
+    }
 };
 
 /**
@@ -73,7 +82,7 @@ public:
     Problem(int n, int k, int b, int mlpCons):
         m_n(n), m_k(k), m_b(b), m_mlpCons(mlpCons),
         m_graph(graph(m_n, vector<pair<int, double>>())),
-        m_exclusionPairs(vector<int>(m_n, -1)) {}
+        m_exclusionPairs(vector<int>(m_n, -1)), m_bestPrice(n * k / 2) {}
 
     /**
      * Returns number of nodes in the graph.
@@ -110,28 +119,28 @@ public:
         m_exclusionPairs.at(v) = u;
     }
 
-    void solveProblem() {
+    Solution solveProblem() {
+
+        auto start = high_resolution_clock::now();
         generateStates();
+        auto stop = high_resolution_clock::now();
+
+        double duration =
+            (double) duration_cast<milliseconds>(stop - start).count() / 1000;
 
     }
 private:
     int m_n, m_k, m_b, m_mlpCons;
+    double m_bestPrice;
+    vector<int> m_bestVec;
     graph m_graph;
     vector<int> m_exclusionPairs;
     vector<State> m_states;
-
-    void recalculatePrice(State& state) {
-        for (auto n: m_graph.at(state.depth))
-            if (state.vec.at(n.first) != -1 &&
-                state.vec.at(n.first) != state.vec.at(state.depth))
-                state.price += n.second;
-    }
 
     void generateStates() {
         State s0(m_n);
         queue<State> q;
         q.push(s0);
-        double bestPrice = m_n * m_k / 2;
 
         while(q.size() <= size_t(m_n * m_mlpCons) && !q.empty()) {
             State s = q.front();
@@ -139,22 +148,30 @@ private:
             if ((s.depth + 1) == m_n)
                 break;
 
-            State tmpState = State(s, 1);
-            recalculatePrice(tmpState);
-            if (tmpState.price < bestPrice)
+            if (m_exclusionPairs.at(s.depth + 1) != -1) {
+                int next = !s.vec.at(m_exclusionPairs.at(s.depth + 1));
+                State tmpState = State(s, next, m_graph);
                 q.push(tmpState);
-            
-            tmpState = State(s, 0);
-            recalculatePrice(tmpState);
-            if (tmpState.price < bestPrice)
+            }
+            else {
+                State tmpState = State(s, 1, m_graph);
                 q.push(tmpState);
+                
+                tmpState = State(s, 0, m_graph);
+                q.push(tmpState);
+            }
         }
+
+        size_t s = q.size();
 
         while (!q.empty()) {
             m_states.push_back(q.front());
             q.pop();
         }
 
+    }
+
+    void bbDFS() {
 
     }
 };

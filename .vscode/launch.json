@@ -6,7 +6,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/out/task3.out",
-            "args": ["3000", "<", "test/mvr_20_10_5.txt"],
+            "args": ["500", "<", "test/mvr_20_10_5.txt"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

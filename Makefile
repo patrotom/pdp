@@ -42,7 +42,7 @@ compile3:
 debug3:
 	$(DEBUG_PAR) src/$(NAME3).cpp -o out/$(NAME3).out
 tests3: compile3
-	$(call tests,$(NAME3),3000)
+	$(call tests,$(NAME3),500)
 
 clean:
 	rm -rf out/*
