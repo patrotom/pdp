@@ -12,32 +12,26 @@ using namespace chrono;
 
 typedef vector<vector<pair<int, double>>> graph;
 
-class State {
-public:
-
+struct State {
     State() {}
 
     State(int size): price(0), depth(0), vec(vector<int>(size, -1)) {
         vec.at(0) = 0;
     }
 
-    State(const State& prevState, int next, graph& graph): depth(prevState.depth + 1),
-                                                           vec(prevState.vec) {
+    void updateState(int next) {
+        depth++;
         vec.at(depth) = next;
-        price = prevState.price;
-        recalculatePrice(graph);
+    }
+
+    void updateState(double newPrice) {
+        depth++;
+        price = newPrice;
     }
 
     double price;
     int depth;
     vector<int> vec;
-private:
-    void recalculatePrice(graph& graph) {
-        for (auto n: graph.at(depth))
-            if (vec.at(n.first) != -1 &&
-                vec.at(n.first) != vec.at(depth))
-                price += n.second;
-    }
 };
 
 /**
@@ -45,19 +39,12 @@ private:
  * price, number of recursive calls, execution time of B&B DFS algorithm, and
  * the vector with nodes that are separated into two disjoint sets.
  */
-class Solution {
-public:
-
+struct Solution {
     Solution() {}
 
     Solution(int size, double initPrice): m_state(State(size)) {
         m_state.price = initPrice;
     }
-
-    /**
-     * Default constructor.
-     */
-    Solution(State state): m_state(state) {}
 
     State m_state;
     double m_duration;
@@ -117,7 +104,7 @@ public:
         #pragma omp parallel for
             for (size_t i = 0; i < m_states.size(); i++) {
                 Solution sol(m_n, initPrice);
-                bbDFS(m_states[i], sol);
+                solve(m_states[i], sol);
                 #pragma omp critical
                     if (sol.m_state.price < m_bestPrice && (sol.m_state.depth + 1) == m_n) {
                         bestSol = sol;
@@ -142,23 +129,31 @@ private:
         queue<State> q;
         q.push(s0);
 
-        while(q.size() <= size_t(m_n * m_mlpCons) && !q.empty()) {
-            State s = q.front();
+        while(q.size() <= size_t(m_mlpCons / m_n) && !q.empty()) {
+            State state = q.front();
             q.pop();
-            if ((s.depth + 1) == m_n)
+            if ((state.depth + 1) == m_n)
                 break;
 
-            if (m_exclusionPairs.at(s.depth + 1) != -1) {
-                int next = !s.vec.at(m_exclusionPairs.at(s.depth + 1));
-                State tmpState = State(s, next, m_graph);
-                q.push(tmpState);
+            if (m_exclusionPairs.at(state.depth + 1) != -1) {
+                int next = !state.vec.at(m_exclusionPairs.at(state.depth + 1));
+                state.updateState(next);
+                state.price = recalculatePrice(state.depth, state.price, state.vec);
+                q.push(state);
             }
             else {
-                State tmpState = State(s, 1, m_graph);
-                q.push(tmpState);
-                
-                tmpState = State(s, 0, m_graph);
-                q.push(tmpState);
+                int depth = state.depth;
+                double price = state.price;
+
+                state.updateState(0);
+                state.price = recalculatePrice(state.depth, state.price, state.vec);
+                q.push(state);
+
+                state.depth = depth;
+                state.price = price;
+                state.updateState(1);
+                state.price = recalculatePrice(state.depth, state.price, state.vec);
+                q.push(state);
             }
         }
 
@@ -168,28 +163,47 @@ private:
         }
     }
 
-    void bbDFS(const State& state, Solution& sol) {
-        if ((state.depth + 1) == m_n) {
+    void solve(State& state, Solution& sol) {
+        int it = state.depth + 1;
+
+        if (it == m_n) {
             if (state.price < sol.m_state.price)
                 sol.m_state = state;
             return;
         }
 
-        if (m_exclusionPairs.at(state.depth + 1) != -1) {
-            int next = !state.vec.at(m_exclusionPairs.at(state.depth + 1));
-            State tmpState = State(state, next, m_graph);
-            if (tmpState.price < sol.m_state.price)
-                bbDFS(tmpState, sol);
+        if (m_exclusionPairs.at(it) != -1) {
+            int next = !state.vec.at(m_exclusionPairs.at(it));
+            state.updateState(next);
+            state.price = recalculatePrice(state.depth, state.price, state.vec);
+            if (state.price < sol.m_state.price)
+                solve(state, sol);
         }
         else {
-            State tmpState = State(state, 1, m_graph);
-            if (tmpState.price < sol.m_state.price)
-                bbDFS(tmpState, sol);
+            state.vec.at(it) = 0;
+            double price0 = recalculatePrice(it, state.price, state.vec);
+            if (price0 < sol.m_state.price) {
+                State state0 = state;
+                state0.updateState(price0);
+                solve(state0, sol);
+            }
             
-            tmpState = State(state, 0, m_graph);
-            if (tmpState.price < sol.m_state.price)
-                bbDFS(tmpState, sol);
+            state.vec.at(it) = 1;
+            double price1 = recalculatePrice(it, state.price, state.vec);
+            if (price1 < sol.m_state.price) {
+                State state1 = state;
+                state1.updateState(price1);
+                solve(state1, sol);
+            }
         }
+    }
+
+    double recalculatePrice(int u, double price, const vector<int>& vec) {
+        for (auto n: m_graph.at(u))
+            if (vec.at(n.first) != -1 &&
+                vec.at(n.first) != vec.at(u))
+                price += n.second;
+        return price;
     }
 };
 
