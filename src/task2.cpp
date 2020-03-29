@@ -2,19 +2,15 @@
 #include <string>
 #include <sstream>
 #include <vector>
-#include <map>
 #include <iterator>
-#include <cmath>
 #include <chrono>
-#include <algorithm>
 #include <omp.h>
-#include <stdexcept>
 
 using namespace std;
 using namespace chrono;
 
 /**
- * Servers as a placeholder for a solution variables. Solution consists of best
+ * Serves as a placeholder for a solution variables. Solution consists of best
  * price, number of recursive calls, execution time of B&B DFS algorithm, and
  * the vector with nodes that are separated into two disjoint sets.
  */
@@ -173,6 +169,7 @@ private:
                     bbDFS(next, newPrice, newVec);
             }
         }
+        #pragma omp taskwait
     }
 
     double recalculatePrice(int u, double price, const vector<int>& vec) {
