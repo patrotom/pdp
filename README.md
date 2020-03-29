@@ -4,6 +4,7 @@ This repository contains Parallel and Distributed Programming (MI-PDP.16) course
 
 * [task1.cpp](src/task1.cpp) – sequential algorithm
 * [task2.cpp](src/task2.cpp) – OpenMP task parallelism
+* [task3.cpp](src/task3.cpp) – OpenMP data parallelism
 
 ## How to compile, execute and run tests
 
