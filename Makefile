@@ -3,14 +3,14 @@ CXXFLAGS=-std=c++11 -Wall -pedantic
 CXXSET=$(CXX) $(CXXFLAGS)
 COMPILE_SEQ=$(CXXSET) -Ofast
 COMPILE_PAR=$(CXXSET) -Ofast -fopenmp
-COMPILE_MPI=OMPI_CXX=g++ mpic++ -fopenmp $(CXXFLAGS)
+COMPILE_MPI=OMPI_CXX=g++ mpic++ -fopenmp -Ofast $(CXXFLAGS)
 DEBUG_SEQ=$(CXXSET) -g
 DEBUG_PAR=$(CXXSET) -g -fopenmp
 NAME1=task1
 NAME2=task2
 NAME3=task3
 NAME4=task4
-NP=2
+NP=4
 
 define tests
 	for file in test/*.txt; do \

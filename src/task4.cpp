@@ -19,7 +19,7 @@ typedef vector<vector<pair<int, double>>> graph;
 struct State {
     double price;
     int depth;
-    vector<double> vec;
+    vector<int> vec;
 };
 
 /**
@@ -68,10 +68,11 @@ public:
         State s0;
         s0.price = 0;
         s0.depth = 0;
-        s0.vec = vector<double>(m_n, -1);
+        s0.vec = vector<int>(m_n, -1);
+        s0.vec.at(0) = 0;
         q.push(s0);
 
-        while(q.size() <= size_t(m_instNum)) {
+        while(q.size() <= size_t(m_instNum / m_n) && !q.empty()) {
             State state = q.front();
             q.pop();
             if ((state.depth + 1) == m_n)
@@ -172,7 +173,7 @@ private:
         state.price = newPrice;
     }
 
-    double recalculatePrice(int u, double price, const vector<double>& vec) {
+    double recalculatePrice(int u, double price, const vector<int>& vec) {
         for (auto n: m_graph.at(u))
             if (vec.at(n.first) != -1 &&
                 vec.at(n.first) != vec.at(u))
@@ -186,7 +187,6 @@ public:
     ProcessHandler(int argc, char **argv) {
         initMPI(argc, argv);
         initSolver(stoi(argv[1]), stoi(argv[2]), argv[3]);
-        initStateType();
     }
 
     void solveProblem() {
@@ -205,7 +205,6 @@ public:
 private:
     int m_provided, m_required, m_numProcs, m_procNum, m_threadNum;
     MECSolver m_solver;
-    MPI_Datatype m_stateType;
     State m_bestState;
 
     static const int tag_work = 0;
@@ -220,14 +219,6 @@ private:
             throw runtime_error("MPI library does not provide required threading support");
         MPI_Comm_size(MPI_COMM_WORLD, &m_numProcs);
         MPI_Comm_rank(MPI_COMM_WORLD, &m_procNum);
-    }
-
-    void initStateType() {
-        const MPI_Aint displacements[3] = {offsetof(State, price), offsetof(State, depth), };
-        const int lengths[3] = {1, 1, m_solver.getN()};
-        MPI_Datatype types[3] = {MPI_DOUBLE, MPI_INT, MPI_INT};
-        MPI_Type_create_struct(3, lengths, displacements, types, &m_stateType);
-        MPI_Type_commit(&m_stateType);
     }
 
     void initSolver(const int& threadNum, const int& instNum, const string& fileName) {
@@ -253,7 +244,7 @@ private:
     }
 
     vector<double> serializeState(State& state) {
-        vector<double> v = state.vec;
+        vector<double> v = vector<double>(state.vec.begin(), state.vec.end());
         v.push_back(state.price);
         v.push_back(state.depth);
         return v;
@@ -263,7 +254,7 @@ private:
         State s;
         s.depth = vec.at(vec.size() - 1);
         s.price = vec.at(vec.size() - 2);
-        s.vec = vector<double>(vec.begin(), vec.begin() + vec.size() - 2);
+        s.vec = vector<int>(vec.begin(), vec.begin() + vec.size() - 2);
         return s;
     }
 
