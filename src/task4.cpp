@@ -137,7 +137,7 @@ private:
         if (m_exclusionPairs.at(it) != -1) {
             updateState(state, !state.vec.at(m_exclusionPairs.at(it)));
             if (state.price < m_bestState.price) {
-                #pragma omp task if ((it - 1) < m_threadNum)
+                #pragma omp task shared (state) if ((it - 1) < m_threadNum)
                     solveProblem(state);
             }
         }
