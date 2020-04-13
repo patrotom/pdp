@@ -355,13 +355,13 @@ private:
         cout << "-------------------------" << endl;
 
         cout << "Set X: ";
-        for (size_t i = 0; i < m_n; i++)
+        for (int i = 0; i < m_n; i++)
             if (vec.at(i) == 0)
                 cout << i << " ";
         cout << endl;
 
         cout << "Set Y: ";
-        for (size_t i = 0; i < m_n; i++)
+        for (int i = 0; i < m_n; i++)
             if (vec.at(i) == 1)
                 cout << i << " ";
         cout << endl;
@@ -370,7 +370,7 @@ private:
 
         cout << "Edges included in cut:" << endl;
         
-        for (size_t i = 0; i < m_n; i++) {
+        for (int i = 0; i < m_n; i++) {
             for (auto it: graph[i]) {
                 if (vec[it.first] != vec[i] && (int) i < it.first)
                     cout << "(" << i << ", " << it.first << ") ";
