@@ -10,6 +10,7 @@
 #include <omp.h>
 #include <mpi.h>
 #include <cstddef>
+#include <stdexcept>
 
 using namespace std;
 using namespace chrono;
