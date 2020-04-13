@@ -20,6 +20,10 @@ using namespace chrono;
 
 typedef vector<vector<pair<int, double>>> graph;
 
+/**
+ * Represents a state of problem we want to solve. State consists of price,
+ * depth (current bit in vector) and a static array of bits.
+ */
 struct State {
     double price;
     int depth;
@@ -32,6 +36,9 @@ struct State {
  */
 class MECSolver {
 public:
+    /**
+     * Default constructor
+     */
     MECSolver() = default;
 
     /**
@@ -42,11 +49,6 @@ public:
                                                                 m_instNum(instNum),
                                                                 m_graph(graph(m_n, vector<pair<int, double>>())),
                                                                 m_exclusionPairs(vector<int>(m_n, -1)) {}
-
-    /**
-     * Returns number of nodes in the graph.
-     */
-    int getN() { return m_n; }
 
     /**
      * Returns graph representation. 
@@ -68,6 +70,9 @@ public:
         m_exclusionPairs.at(v) = u;
     }
 
+    /**
+     * Generates initial states(instances) of the problem using BFS algorithm.
+     */
     void generateStates(queue<State>& q) {
         State s0;
         initState(s0);
@@ -100,8 +105,8 @@ public:
     }
 
     /**
-     * Solves the problem using OpenMP and data parallelism technique. Returns
-     * the final solution.
+     * Solves the problem using OpenMP and task parallelism technique. Returns
+     * the best solution.
      */
     State solve(State& state) {
         m_bestState.price = INT_MAX;
@@ -193,14 +198,27 @@ private:
     }
 };
 
+/**
+ * Responsible for handling MPI communication. Divides work between master and
+ * slave processes. Makes sure that passed messages are received and processed
+ * by a correct process.
+ */
 class ProcessHandler {
 public:
+    /**
+     * Constructor which initializes MPI, solver class, and custom structured
+     * MPI type based on the State structure.
+     */
     ProcessHandler(int argc, char **argv) {
         initMPI(argc, argv);
         initSolver(stoi(argv[1]), stoi(argv[2]), argv[3]);
         initStateType();
     }
 
+    /**
+     * Divides work between master and slave processes and solves the problem
+     * by calling appropriate functions.
+     */
     void solveProblem() {
         if (m_procNum == 0) {
             auto start = high_resolution_clock::now();
