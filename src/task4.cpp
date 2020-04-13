@@ -3,6 +3,7 @@
 #include <sstream>
 #include <fstream>
 #include <vector>
+#include <array>
 #include <queue>
 #include <iterator>
 #include <chrono>
@@ -12,6 +13,8 @@
 #include <cstddef>
 #include <stdexcept>
 
+#define INST_SIZE 160
+
 using namespace std;
 using namespace chrono;
 
@@ -20,7 +23,7 @@ typedef vector<vector<pair<int, double>>> graph;
 struct State {
     double price;
     int depth;
-    vector<int> vec;
+    array<int, INST_SIZE> vec;
 };
 
 /**
@@ -67,10 +70,7 @@ public:
 
     void generateStates(queue<State>& q) {
         State s0;
-        s0.price = 0;
-        s0.depth = 0;
-        s0.vec = vector<int>(m_n, -1);
-        s0.vec.at(0) = 0;
+        initState(s0);
         q.push(s0);
 
         while(q.size() <= size_t(m_instNum / m_n) && !q.empty()) {
@@ -174,12 +174,22 @@ private:
         state.price = newPrice;
     }
 
-    double recalculatePrice(int u, double price, const vector<int>& vec) {
+    double recalculatePrice(int u, double price, const array<int, INST_SIZE>& vec) {
         for (auto n: m_graph.at(u))
             if (vec.at(n.first) != -1 &&
                 vec.at(n.first) != vec.at(u))
                 price += n.second;
         return price;
+    }
+
+    void initState(State& state) {
+        state.price = 0;
+        state.depth = 0;
+
+        for (int i = 0; i < m_n; i++)
+            state.vec.at(i) = -1;
+
+        state.vec.at(0) = 0;
     }
 };
 
@@ -188,6 +198,7 @@ public:
     ProcessHandler(int argc, char **argv) {
         initMPI(argc, argv);
         initSolver(stoi(argv[1]), stoi(argv[2]), argv[3]);
+        initStateType();
     }
 
     void solveProblem() {
@@ -204,9 +215,10 @@ public:
         MPI_Finalize ();
     }
 private:
-    int m_provided, m_required, m_numProcs, m_procNum, m_threadNum;
+    int m_provided, m_required, m_numProcs, m_procNum, m_threadNum, m_n;
     MECSolver m_solver;
     State m_bestState;
+    MPI_Datatype m_stateType;
 
     static const int tag_work = 0;
     static const int tag_done = 1;
@@ -229,6 +241,7 @@ private:
         getline(inFile, rawInput);
         vector<int> inits = split<int>(rawInput);
         m_solver = MECSolver(inits.at(0), inits.at(1), inits.at(2), threadNum, instNum);
+        m_n = inits.at(0);
 
         int edgesNum = inits.at(0) * inits.at(1) / 2;
         for (int i = 0; i < edgesNum; i++) {
@@ -244,19 +257,14 @@ private:
         }
     }
 
-    vector<double> serializeState(State& state) {
-        vector<double> v = vector<double>(state.vec.begin(), state.vec.end());
-        v.push_back(state.price);
-        v.push_back(state.depth);
-        return v;
-    }
-
-    State deserializeState(vector<double>& vec) {
-        State s;
-        s.depth = vec.at(vec.size() - 1);
-        s.price = vec.at(vec.size() - 2);
-        s.vec = vector<int>(vec.begin(), vec.begin() + vec.size() - 2);
-        return s;
+    void initStateType() {
+        const MPI_Aint displacements[3] = {offsetof(State, price),
+                                           offsetof(State, depth),
+                                           offsetof(State, vec)};
+        const int lengths[3] = {1, 1, INST_SIZE};
+        MPI_Datatype types[3] = {MPI_DOUBLE, MPI_INT, MPI_INT};
+        MPI_Type_create_struct(3, lengths, displacements, types, &m_stateType);
+        MPI_Type_commit(&m_stateType);
     }
 
     void doMasterWork() {
@@ -264,14 +272,12 @@ private:
         queue<State> q;
         m_bestState.price = INT_MAX;
         m_solver.generateStates(q);
-        int serSize = m_solver.getN() + 2;
 
         for (int dest = 1; dest < m_numProcs; dest++) {
             if (!q.empty()) {
                 State state = q.front();
                 q.pop();
-                vector<double> ser = serializeState(state);
-                MPI_Send(ser.data(), serSize, MPI_DOUBLE, dest, tag_work, MPI_COMM_WORLD);
+                MPI_Send(&state, 1, m_stateType, dest, tag_work, MPI_COMM_WORLD);
             }
             else {
                 break;
@@ -282,9 +288,7 @@ private:
 
         while (workingSlaves > 0) {
             State state;
-            vector<double> ser(serSize);
-            MPI_Recv(ser.data(), serSize, MPI_DOUBLE, MPI_ANY_SOURCE, tag_done, MPI_COMM_WORLD, &status);
-            state = deserializeState(ser);
+            MPI_Recv(&state, 1, m_stateType, MPI_ANY_SOURCE, tag_done, MPI_COMM_WORLD, &status);
 
             if (state.price < m_bestState.price)
                 m_bestState = state;
@@ -292,11 +296,10 @@ private:
             if (!q.empty()) {
                 state = q.front();
                 q.pop();
-                ser = serializeState(state);
-                MPI_Send(ser.data(), serSize, MPI_DOUBLE, status.MPI_SOURCE, tag_work, MPI_COMM_WORLD);
+                MPI_Send(&state, 1, m_stateType, status.MPI_SOURCE, tag_work, MPI_COMM_WORLD);
             }
             else {
-                MPI_Send(ser.data(), serSize, MPI_DOUBLE, status.MPI_SOURCE, tag_finished, MPI_COMM_WORLD);
+                MPI_Send(&state, 1, m_stateType, status.MPI_SOURCE, tag_finished, MPI_COMM_WORLD);
                 workingSlaves--;
             }
         }
@@ -304,19 +307,15 @@ private:
 
     void doSlaveWork() {
         MPI_Status status;
-        int serSize = m_solver.getN() + 2;
         while (true) {
             State state;
-            vector<double> ser(serSize);
-            MPI_Recv(ser.data(), serSize, MPI_DOUBLE, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+            MPI_Recv(&state, 1, m_stateType, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
             if (status.MPI_TAG == tag_finished) {
                 break;
             }
             else if (status.MPI_TAG == tag_work) {
-                state = deserializeState(ser);
                 State bestState = m_solver.solve(state);
-                ser = serializeState(bestState);
-                MPI_Send(ser.data(), serSize, MPI_DOUBLE, 0, tag_done, MPI_COMM_WORLD);
+                MPI_Send(&bestState, 1, m_stateType, 0, tag_done, MPI_COMM_WORLD);
             }
             else {
                 throw runtime_error("Unknown tag received");
@@ -338,13 +337,13 @@ private:
         cout << "-------------------------" << endl;
 
         cout << "Set X: ";
-        for (size_t i = 0; i < vec.size(); i++)
+        for (size_t i = 0; i < m_n; i++)
             if (vec.at(i) == 0)
                 cout << i << " ";
         cout << endl;
 
         cout << "Set Y: ";
-        for (size_t i = 0; i < vec.size(); i++)
+        for (size_t i = 0; i < m_n; i++)
             if (vec.at(i) == 1)
                 cout << i << " ";
         cout << endl;
@@ -353,7 +352,7 @@ private:
 
         cout << "Edges included in cut:" << endl;
         
-        for (size_t i = 0; i < vec.size(); i++) {
+        for (size_t i = 0; i < m_n; i++) {
             for (auto it: graph[i]) {
                 if (vec[it.first] != vec[i] && (int) i < it.first)
                     cout << "(" << i << ", " << it.first << ") ";

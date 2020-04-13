@@ -10,7 +10,7 @@ NAME1=task1
 NAME2=task2
 NAME3=task3
 NAME4=task4
-NP=4
+NP=3
 
 define tests
 	for file in test/*.txt; do \
