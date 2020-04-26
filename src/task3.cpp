@@ -6,6 +6,7 @@
 #include <iterator>
 #include <chrono>
 #include <omp.h>
+#include <stdexcept>
 
 using namespace std;
 using namespace chrono;
