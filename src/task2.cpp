@@ -5,6 +5,7 @@
 #include <iterator>
 #include <chrono>
 #include <omp.h>
+#include <stdexcept>
 
 using namespace std;
 using namespace chrono;
@@ -146,7 +147,7 @@ private:
             vec.at(next) = !vec.at(m_exclusionPairs.at(next));
             newPrice = recalculatePrice(next, price, vec);
             if (newPrice < m_bestPrice) {
-                #pragma omp task if (u < m_limit)
+                #pragma omp task shared(vec) if (u < m_limit)
                     bbDFS(next, newPrice, vec);
             }
         }
@@ -157,7 +158,7 @@ private:
             newPrice = recalculatePrice(next, price, vec);
             if (newPrice < m_bestPrice) {
                 newVec = vec;
-                #pragma omp task if (u < m_limit)
+                #pragma omp task shared(vec) if (u < m_limit)
                     bbDFS(next, newPrice, newVec);
             }
             
@@ -165,7 +166,7 @@ private:
             newPrice = recalculatePrice(next, price, vec);
             if (newPrice < m_bestPrice) {
                 newVec = vec;
-                #pragma omp task if (u < m_limit)
+                #pragma omp task shared(vec) if (u < m_limit)
                     bbDFS(next, newPrice, newVec);
             }
         }
