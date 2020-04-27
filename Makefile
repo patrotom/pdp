@@ -15,14 +15,18 @@ NP=3
 define tests
 	for file in test/*.txt; do \
 	    echo "$$file\n"; \
-		if [ $(1) = "task4" ]; then \
-			if [[ ${INFINIBAND} = "true" ]]; then \
-				mpirun -np $(2) out/$(1).out $(3) $(4) "$$file"; \
-			else \
-				mpirun --mca btl tcp,self -np $(2) out/$(1).out $(3) $(4) "$$file"; \
-			fi; \
+		out/$(1).out $(2) < "$$file"; \
+	    echo "--------------------"; \
+	done
+endef
+
+define tests_mpi
+	for file in test/*.txt; do \
+	    echo "$$file\n"; \
+		if [[ ${INFINIBAND} = "true" ]]; then \
+			mpirun -np $(2) out/$(1).out $(3) $(4) "$$file"; \
 		else \
-	    	out/$(1).out $(2) < "$$file"; \
+			mpirun --mca btl tcp,self -np $(2) out/$(1).out $(3) $(4) "$$file"; \
 		fi; \
 	    echo "--------------------"; \
 	done
@@ -58,9 +62,7 @@ tests3: compile3
 compile4:
 	$(COMPILE_MPI) src/$(NAME4).cpp -o out/$(NAME4).out
 tests4: compile4
-	$(call tests,$(NAME4),$(NP),15,1000)
-tests4_star: compile4
-	$(call tests,$(NAME4),$(NSLOTS),15,1000)
+	$(call tests_mpi,$(NAME4),$(NP),15,1000)
 
 clean:
 	rm -rf out/*
