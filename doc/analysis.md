@@ -36,3 +36,6 @@ Times are calculated using `std::chrono` library. All times are represented in s
 | **MPI (2P, 20T)**    | > 600        | 522.964      | 399.208      |
 | **MPI (3P, 10T)**    | 76.117       | 54.122       | 38.412       |
 | **MPI (3P, 20T)**    | 53.3         | 36.533       | 26.861       |
+
+* P – Process
+* T – Thread
